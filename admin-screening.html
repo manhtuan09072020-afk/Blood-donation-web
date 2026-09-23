@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khám Sàng Lọc - Admin</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <div class="container-admin">
+        <aside class="sidebar">
+            <h2 class="logo">Admin</h2>
+            <ul class="nav-links">
+                <li><a href="admin-dashboard.html">Dashboard</a></li>
+                <li><a href="admin-donors.html">👥 Người Hiến Máu</a></li>
+                <li><a href="admin-events.html">📅 Sự Kiện</a></li>
+                <li><a href="admin-registrations.html">📝 Đăng Ký</a></li>
+                <li><a href="admin-screening.html" class="active">🏥 Sàng Lọc</a></li>
+                <li><a href="admin-blood-inventory.html">📦 Kho Máu</a></li>
+                <li><a href="admin-blood-requests.html">🆘 Yêu Cầu Máu</a></li>
+                <li><a href="admin-notifications.html">📢 Thông Báo</a></li>
+                <li><a href="admin-reports.html">📊 Báo Cáo</a></li>
+                <li><a href="admin-users.html">👨‍💼 Tài Khoản</a></li>
+            </ul>
+        </aside>
+
+        <div class="main-content">
+            <nav class="navbar-admin">
+                <div class="navbar-title">🏥 Khám Sức Khỏe & Sàng Lọc Lâm Sàng</div>
+                <div class="user-profile">
+                    <button class="btn-logout" onclick="handleLogout()">🚪 Đăng Xuất</button>
+                </div>
+            </nav>
+
+            <div class="dashboard-content">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Người Hiến</th>
+                            <th>Ngày Khám</th>
+                            <th>Huyết Áp</th>
+                            <th>Nhóm Máu</th>
+                            <th>Kết Quả</th>
+                            <th>Ghi Chú</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Vũ Cao Mạnh Tuấn</td>
+                            <td>25/09/2026</td>
+                            <td>120/80</td>
+                            <td>O+</td>
+                            <td><span class="badge success">✅ Đạt</span></td>
+                            <td>Huyết áp ổn định, đủ điều kiện</td>
+                            <td><button class="btn-sm">Cập nhật</button></td>
+                        </tr>
+                        <tr>
+                            <td>Nguyễn Thị B</td>
+                            <td>25/09/2026</td>
+                            <td>-</td>
+                            <td>A+</td>
+                            <td><span class="badge danger">❌ Không đạt</span></td>
+                            <td>Thiếu máu (Hb = 11.5)</td>
+                            <td><button class="btn-sm">Cập nhật</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function handleLogout() {
+            if (confirm('Đăng xuất?')) {
+                localStorage.clear();
+                window.location.href = 'index.html';
+            }
+        }
+        window.addEventListener('load', function() {
+            if (localStorage.getItem('isLoggedIn') !== 'true') {
+                window.location.href = 'login.html';
+            }
+        });
+    </script>
+</body>
+</html>

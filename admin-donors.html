@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Người Hiến Máu - Admin</title>
+    <link rel="stylesheet" href="admin-style.css">
+    <style>
+        body { margin: 0; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+        }
+        .close-btn {
+            float: right;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-admin">
+        <aside class="sidebar">
+            <h2 class="logo">Admin</h2>
+            <ul class="nav-links">
+                <li><a href="admin-dashboard.html">Dashboard</a></li>
+                <li><a href="admin-donors.html" class="active">👥 Người Hiến Máu</a></li>
+                <li><a href="admin-events.html">📅 Sự Kiện</a></li>
+                <li><a href="admin-registrations.html">📝 Đăng Ký</a></li>
+                <li><a href="admin-screening.html">🏥 Sàng Lọc</a></li>
+                <li><a href="admin-blood-inventory.html">📦 Kho Máu</a></li>
+                <li><a href="admin-blood-requests.html">🆘 Yêu Cầu Máu</a></li>
+                <li><a href="admin-notifications.html">📢 Thông Báo</a></li>
+                <li><a href="admin-reports.html">📊 Báo Cáo</a></li>
+                <li><a href="admin-users.html">👨‍💼 Tài Khoản</a></li>
+            </ul>
+        </aside>
+
+        <div class="main-content">
+            <nav class="navbar-admin">
+                <div class="navbar-title">👥 Quản Lý Người Hiến Máu</div>
+                <div class="user-profile">
+                    <button class="btn-logout" onclick="handleLogout()">🚪 Đăng Xuất</button>
+                </div>
+            </nav>
+
+            <div class="dashboard-content">
+                <div class="action-bar">
+                    <input type="text" id="searchInput" placeholder="Tìm kiếm tên, SĐT..." onkeyup="filterTable()">
+                    <button class="btn-primary" onclick="showAddModal()">+ Thêm Người Hiến</button>
+                </div>
+
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Họ Tên</th>
+                            <th>Nhóm Máu</th>
+                            <th>SĐT</th>
+                            <th>Số Lần Hiến</th>
+                            <th>Lần Cuối</th>
+                            <th>Trạng Thái</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="donorsTable">
+                        <tr>
+                            <td>Vũ Cao Mạnh Tuấn</td>
+                            <td>O+</td>
+                            <td>0912345678</td>
+                            <td>5</td>
+                            <td>15/10/2026</td>
+                            <td><span class="badge success">✅ Đủ điều kiện</span></td>
+                            <td>
+                                <button class="btn-sm" onclick="editDonor(1)">Sửa</button>
+                                <button class="btn-sm danger" onclick="deleteDonor(1)">Xóa</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Nguyễn Tuấn Anh</td>
+                            <td>A+</td>
+                            <td>0912345679</td>
+                            <td>3</td>
+                            <td>14/10/2026</td>
+                            <td><span class="badge warning">⏳ Đang chờ</span></td>
+                            <td>
+                                <button class="btn-sm" onclick="editDonor(2)">Sửa</button>
+                                <button class="btn-sm danger" onclick="deleteDonor(2)">Xóa</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Lâm Văn Tiến</td>
+                            <td>B+</td>
+                            <td>0912345680</td>
+                            <td>2</td>
+                            <td>10/10/2026</td>
+                            <td><span class="badge success">✅ Đủ điều kiện</span></td>
+                            <td>
+                                <button class="btn-sm" onclick="editDonor(3)">Sửa</button>
+                                <button class="btn-sm danger" onclick="deleteDonor(3)">Xóa</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Thêm/Sửa -->
+    <div class="modal" id="donorModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+                <span id="modalTitle">Thêm Người Hiến Máu Mới</span>
+            </div>
+            <form onsubmit="saveDonor(event)">
+                <div class="form-group">
+                    <label>Họ và Tên</label>
+                    <input type="text" id="donorName" required>
+                </div>
+                <div class="form-group">
+                    <label>Số Điện Thoại</label>
+                    <input type="tel" id="donorPhone" required>
+                </div>
+                <div class="form-group">
+                    <label>Nhóm Máu</label>
+                    <select id="donorBlood" required>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Số Lần Hiến</label>
+                    <input type="number" id="donorTimes" value="0" required>
+                </div>
+                <button type="submit" class="btn-primary">Lưu</button>
+                <button type="button" class="btn-primary" style="background: #999;" onclick="closeModal()">Hủy</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function filterTable() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.getElementById('donorsTable').getElementsByTagName('tr');
+            for (let row of rows) {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(search) ? '' : 'none';
+            }
+        }
+
+        function showAddModal() {
+            document.getElementById('modalTitle').textContent = 'Thêm Người Hiến Máu Mới';
+            document.getElementById('donorName').value = '';
+            document.getElementById('donorPhone').value = '';
+            document.getElementById('donorBlood').value = 'O+';
+            document.getElementById('donorTimes').value = '0';
+            document.getElementById('donorModal').classList.add('show');
+        }
+
+        function editDonor(id) {
+            document.getElementById('modalTitle').textContent = 'Sửa Thông Tin Người Hiến';
+            document.getElementById('donorModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('donorModal').classList.remove('show');
+        }
+
+        function saveDonor(event) {
+            event.preventDefault();
+            alert('Lưu thông tin thành công!');
+            closeModal();
+        }
+
+        function deleteDonor(id) {
+            if (confirm('Bạn có chắc muốn xóa?')) {
+                alert('Đã xóa thành công!');
+            }
+        }
+
+        function handleLogout() {
+            if (confirm('Bạn có chắc muốn đăng xuất?')) {
+                localStorage.clear();
+                window.location.href = 'index.html';
+            }
+        }
+
+        window.addEventListener('load', function() {
+            if (localStorage.getItem('isLoggedIn') !== 'true') {
+                window.location.href = 'login.html';
+            }
+        });
+    </script>
+</body>
+</html>

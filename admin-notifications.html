@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thông Báo - Admin</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <div class="container-admin">
+        <aside class="sidebar">
+            <h2 class="logo">Admin</h2>
+            <ul class="nav-links">
+                <li><a href="admin-dashboard.html">Dashboard</a></li>
+                <li><a href="admin-donors.html">👥 Người Hiến Máu</a></li>
+                <li><a href="admin-events.html">📅 Sự Kiện</a></li>
+                <li><a href="admin-registrations.html">📝 Đăng Ký</a></li>
+                <li><a href="admin-screening.html">🏥 Sàng Lọc</a></li>
+                <li><a href="admin-blood-inventory.html">📦 Kho Máu</a></li>
+                <li><a href="admin-blood-requests.html">🆘 Yêu Cầu Máu</a></li>
+                <li><a href="admin-notifications.html" class="active">📢 Thông Báo</a></li>
+                <li><a href="admin-reports.html">📊 Báo Cáo</a></li>
+                <li><a href="admin-users.html">👨‍💼 Tài Khoản</a></li>
+            </ul>
+        </aside>
+
+        <div class="main-content">
+            <nav class="navbar-admin">
+                <div class="navbar-title">📢 Gửi Thông Báo & Vận Động</div>
+                <div class="user-profile">
+                    <button class="btn-logout" onclick="handleLogout()">🚪 Đăng Xuất</button>
+                </div>
+            </nav>
+
+            <div class="dashboard-content">
+                <div class="admin-form">
+                    <h3>✉️ Tạo Thông Báo Mới</h3>
+                    <form onsubmit="sendNotification(event)" style="margin-top: 1rem;">
+                        <div class="form-group">
+                            <label>Tiêu đề thông báo:</label>
+                            <input type="text" placeholder="Vd: Kêu gọi hiến máu khẩn cấp nhóm AB+" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Đối tượng nhận:</label>
+                            <select required>
+                                <option>-- Chọn đối tượng --</option>
+                                <option>Tất cả người dùng</option>
+                                <option>Người có nhóm máu O+</option>
+                                <option>Người có nhóm máu A+</option>
+                                <option>Người có nhóm máu B+</option>
+                                <option>Người có nhóm máu AB+</option>
+                                <option>Người đã hiến ≥3 lần</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Nội dung:</label>
+                            <textarea rows="4" placeholder="Nhập nội dung thông báo..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary">📤 Gửi Thông Báo</button>
+                    </form>
+                </div>
+
+                <h3 style="margin-top: 2rem;">📋 Lịch Sử Thông Báo Đã Gửi</h3>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Tiêu Đề</th>
+                            <th>Đối Tượng</th>
+                            <th>Ngày Gửi</th>
+                            <th>Lượt Xem</th>
+                            <th>Trạng Thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Kêu gọi hiến máu khẩn cấp AB+</td>
+                            <td>Nhóm máu AB+</td>
+                            <td>23/09/2026 10:30</td>
+                            <td>45 lượt</td>
+                            <td><span class="badge success">✅ Thành công</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function sendNotification(event) {
+            event.preventDefault();
+            alert('✅ Gửi thông báo thành công!');
+        }
+        function handleLogout() {
+            if (confirm('Đăng xuất?')) {
+                localStorage.clear();
+                window.location.href = 'index.html';
+            }
+        }
+        window.addEventListener('load', function() {
+            if (localStorage.getItem('isLoggedIn') !== 'true') {
+                window.location.href = 'login.html';
+            }
+        });
+    </script>
+</body>
+</html>

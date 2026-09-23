@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kho Máu - Admin</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <div class="container-admin">
+        <aside class="sidebar">
+            <h2 class="logo">Admin</h2>
+            <ul class="nav-links">
+                <li><a href="admin-dashboard.html">Dashboard</a></li>
+                <li><a href="admin-donors.html">👥 Người Hiến Máu</a></li>
+                <li><a href="admin-events.html">📅 Sự Kiện</a></li>
+                <li><a href="admin-registrations.html">📝 Đăng Ký</a></li>
+                <li><a href="admin-screening.html">🏥 Sàng Lọc</a></li>
+                <li><a href="admin-blood-inventory.html" class="active">📦 Kho Máu</a></li>
+                <li><a href="admin-blood-requests.html">🆘 Yêu Cầu Máu</a></li>
+                <li><a href="admin-notifications.html">📢 Thông Báo</a></li>
+                <li><a href="admin-reports.html">📊 Báo Cáo</a></li>
+                <li><a href="admin-users.html">👨‍💼 Tài Khoản</a></li>
+            </ul>
+        </aside>
+
+        <div class="main-content">
+            <nav class="navbar-admin">
+                <div class="navbar-title">📦 Quản Lý Kho Máu & Cảnh Báo</div>
+                <div class="user-profile">
+                    <button class="btn-logout" onclick="handleLogout()">🚪 Đăng Xuất</button>
+                </div>
+            </nav>
+
+            <div class="dashboard-content">
+                <div class="inventory-summary">
+                    <p>Tổng đơn vị máu hiện có: <strong style="color: var(--primary);">102 đơn vị</strong></p>
+                    <button class="btn-primary">📊 Xuất Báo Cáo Tồn Kho</button>
+                </div>
+
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Nhóm Máu</th>
+                            <th>Số Lượng (đơn vị)</th>
+                            <th>Hạn Sử Dụng (Gần nhất)</th>
+                            <th>Trạng Thái Cảnh Báo</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>O+</strong></td>
+                            <td>45</td>
+                            <td>30 ngày</td>
+                            <td><span class="badge success">✅ Bình thường</span></td>
+                            <td><button class="btn-sm">Chi tiết</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>A+</strong></td>
+                            <td>32</td>
+                            <td>15 ngày</td>
+                            <td><span class="badge warning">⚠️ Sắp hết hạn</span></td>
+                            <td><button class="btn-sm">Chi tiết</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>B+</strong></td>
+                            <td>12</td>
+                            <td>25 ngày</td>
+                            <td><span class="badge warning">⚠️ Cảnh báo</span></td>
+                            <td><button class="btn-sm">Chi tiết</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>AB+</strong></td>
+                            <td>5</td>
+                            <td>5 ngày</td>
+                            <td><span class="badge danger">🔴 Nguy cấp</span></td>
+                            <td><button class="btn-sm danger">Cảnh báo</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function handleLogout() {
+            if (confirm('Đăng xuất?')) {
+                localStorage.clear();
+                window.location.href = 'index.html';
+            }
+        }
+        window.addEventListener('load', function() {
+            if (localStorage.getItem('isLoggedIn') !== 'true') {
+                window.location.href = 'login.html';
+            }
+        });
+    </script>
+</body>
+</html>

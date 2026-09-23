@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Tài Khoản - Admin</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <div class="container-admin">
+        <aside class="sidebar">
+            <h2 class="logo">Admin</h2>
+            <ul class="nav-links">
+                <li><a href="admin-dashboard.html">Dashboard</a></li>
+                <li><a href="admin-donors.html">👥 Người Hiến Máu</a></li>
+                <li><a href="admin-events.html">📅 Sự Kiện</a></li>
+                <li><a href="admin-registrations.html">📝 Đăng Ký</a></li>
+                <li><a href="admin-screening.html">🏥 Sàng Lọc</a></li>
+                <li><a href="admin-blood-inventory.html">📦 Kho Máu</a></li>
+                <li><a href="admin-blood-requests.html">🆘 Yêu Cầu Máu</a></li>
+                <li><a href="admin-notifications.html">📢 Thông Báo</a></li>
+                <li><a href="admin-reports.html">📊 Báo Cáo</a></li>
+                <li><a href="admin-users.html" class="active">👨‍💼 Tài Khoản</a></li>
+            </ul>
+        </aside>
+
+        <div class="main-content">
+            <nav class="navbar-admin">
+                <div class="navbar-title">👨‍💼 Quản Lý Tài Khoản & Phân Quyền</div>
+                <div class="user-profile">
+                    <button class="btn-logout" onclick="handleLogout()">🚪 Đăng Xuất</button>
+                </div>
+            </nav>
+
+            <div class="dashboard-content">
+                <button class="btn-primary" style="margin-bottom: 1.5rem;" onclick="alert('Cấp tài khoản mới')">+ Cấp Tài Khoản Mới</button>
+
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Người Dùng</th>
+                            <th>Email</th>
+                            <th>Vai Trò</th>
+                            <th>Trạng Thái</th>
+                            <th>Ngày Tạo</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Vũ Cao Mạnh Tuấn</td>
+                            <td>admin@hospital.com</td>
+                            <td><span class="badge danger">🔴 Admin</span></td>
+                            <td><span class="badge success">✅ Hoạt động</span></td>
+                            <td>01/08/2026</td>
+                            <td><button class="btn-sm" onclick="alert('Sửa quyền')">Sửa Quyền</button></td>
+                        </tr>
+                        <tr>
+                            <td>Bác sĩ Phạm A</td>
+                            <td>doctor@hospital.com</td>
+                            <td><span class="badge warning">🟡 Doctor</span></td>
+                            <td><span class="badge success">✅ Hoạt động</span></td>
+                            <td>05/08/2026</td>
+                            <td><button class="btn-sm" onclick="alert('Sửa quyền')">Sửa Quyền</button></td>
+                        </tr>
+                        <tr>
+                            <td>Nhân viên Trần B</td>
+                            <td>staff@hospital.com</td>
+                            <td><span class="badge secondary">⚪ Staff</span></td>
+                            <td><span class="badge success">✅ Hoạt động</span></td>
+                            <td>10/08/2026</td>
+                            <td><button class="btn-sm" onclick="alert('Sửa quyền')">Sửa Quyền</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function handleLogout() {
+            if (confirm('Đăng xuất?')) {
+                localStorage.clear();
+                window.location.href = 'index.html';
+            }
+        }
+        window.addEventListener('load', function() {
+            if (localStorage.getItem('isLoggedIn') !== 'true') {
+                window.location.href = 'login.html';
+            }
+        });
+    </script>
+</body>
+</html>

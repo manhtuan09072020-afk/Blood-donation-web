@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tiếp Nhận Máu - Admin</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <div class="container-admin">
+        <aside class="sidebar">
+            <h2 class="logo">Admin</h2>
+            <ul class="nav-links">
+                <li><a href="admin-dashboard.html">Dashboard</a></li>
+                <li><a href="admin-donors.html">👥 Người Hiến Máu</a></li>
+                <li><a href="admin-events.html">📅 Sự Kiện</a></li>
+                <li><a href="admin-registrations.html">📝 Đăng Ký</a></li>
+                <li><a href="admin-screening.html">🏥 Sàng Lọc</a></li>
+                <li><a href="admin-blood-reception.html" class="active">🩸 Tiếp Nhận</a></li>
+                <li><a href="admin-blood-inventory.html">📦 Kho Máu</a></li>
+                <li><a href="admin-blood-requests.html">🆘 Yêu Cầu Máu</a></li>
+                <li><a href="admin-notifications.html">📢 Thông Báo</a></li>
+                <li><a href="admin-reports.html">📊 Báo Cáo</a></li>
+                <li><a href="admin-users.html">👨‍💼 Tài Khoản</a></li>
+            </ul>
+        </aside>
+
+        <div class="main-content">
+            <nav class="navbar-admin">
+                <div class="navbar-title">🩸 Tiếp Nhận & Đăng Ký Máu</div>
+                <div class="user-profile">
+                    <button class="btn-logout" onclick="handleLogout()">🚪 Đăng Xuất</button>
+                </div>
+            </nav>
+
+            <div class="dashboard-content">
+                <button class="btn-primary" style="margin-bottom: 1.5rem;" onclick="alert('Thêm máu mới')">+ Nhập Máu Mới</button>
+
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Người Hiến</th>
+                            <th>Nhóm Máu</th>
+                            <th>Số Đơn Vị</th>
+                            <th>Ngày Hiến</th>
+                            <th>Kiểm Định</th>
+                            <th>Trạng Thái</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Vũ Cao Mạnh Tuấn</td>
+                            <td>O+</td>
+                            <td>1</td>
+                            <td>25/09/2026</td>
+                            <td><span class="badge success">✅ Pass</span></td>
+                            <td><span class="badge success">✅ Vào kho</span></td>
+                            <td><button class="btn-sm">Chi tiết</button></td>
+                        </tr>
+                        <tr>
+                            <td>Nguyễn Tuấn Anh</td>
+                            <td>A+</td>
+                            <td>1</td>
+                            <td>24/09/2026</td>
+                            <td><span class="badge warning">⏳ Chờ KĐ</span></td>
+                            <td><span class="badge warning">⏳ Chờ xử lý</span></td>
+                            <td><button class="btn-sm">Cập nhật</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function handleLogout() {
+            if (confirm('Đăng xuất?')) {
+                localStorage.clear();
+                window.location.href = 'index.html';
+            }
+        }
+        window.addEventListener('load', function() {
+            if (localStorage.getItem('isLoggedIn') !== 'true') {
+                window.location.href = 'login.html';
+            }
+        });
+    </script>
+</body>
+</html>

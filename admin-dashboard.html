@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Hệ Thống Hiến Máu</title>
+    <link rel="stylesheet" href="admin-style.css">
+    <style>
+        body { margin: 0; }
+    </style>
+</head>
+<body>
+    <div class="container-admin">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <h2 class="logo">Admin</h2>
+            <ul class="nav-links">
+                <li><a href="admin-dashboard.html" class="active">Dashboard</a></li>
+                <li><a href="admin-donors.html">👥 Người Hiến Máu</a></li>
+                <li><a href="admin-events.html">📅 Sự Kiện</a></li>
+                <li><a href="admin-registrations.html">📝 Đăng Ký</a></li>
+                <li><a href="admin-screening.html">🏥 Sàng Lọc</a></li>
+                <li><a href="admin-blood-reception.html">🩸 Tiếp Nhận Máu</a></li>
+                <li><a href="admin-blood-inventory.html">📦 Kho Máu</a></li>
+                <li><a href="admin-blood-requests.html">🆘 Yêu Cầu Máu</a></li>
+                <li><a href="admin-notifications.html">📢 Thông Báo</a></li>
+                <li><a href="admin-reports.html">📊 Báo Cáo</a></li>
+                <li><a href="admin-users.html">👨‍💼 Tài Khoản</a></li>
+            </ul>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <nav class="navbar-admin">
+                <div class="navbar-title">📊 Tổng Quan Hệ Thống</div>
+                <div class="user-profile">
+                    <span id="userDisplay">Admin</span>
+                    <button class="btn-logout" onclick="handleLogout()">🚪 Đăng Xuất</button>
+                </div>
+            </nav>
+
+            <div class="dashboard-content">
+                <!-- STATS -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>👥 Tổng Người Hiến Máu</h3>
+                        <p id="totalDonors">1,245</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>🩸 Đơn Vị Máu Tồn Kho</h3>
+                        <p id="totalBlood">320</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>📅 Sự Kiện Sắp Tới</h3>
+                        <p id="upcomingEvents">3</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>⏳ Yêu Cầu Chờ Duyệt</h3>
+                        <p id="pendingRequests">5</p>
+                    </div>
+                </div>
+
+                <!-- RECENT ACTIVITY -->
+                <h3 style="margin-top: 2rem; margin-bottom: 1rem;">📝 Hoạt Động Gần Đây</h3>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Thời Gian</th>
+                            <th>Hành Động</th>
+                            <th>Chi Tiết</th>
+                            <th>Trạng Thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>10 phút trước</td>
+                            <td>Nhập Kho</td>
+                            <td>50 đơn vị máu O+ từ sự kiện HUIT</td>
+                            <td><span class="badge success">✅ Thành công</span></td>
+                        </tr>
+                        <tr>
+                            <td>1 giờ trước</td>
+                            <td>Duyệt Yêu Cầu</td>
+                            <td>Bệnh viện Chợ Rẫy (20 đơn vị AB+)</td>
+                            <td><span class="badge success">✅ Đã cấp phát</span></td>
+                        </tr>
+                        <tr>
+                            <td>2 giờ trước</td>
+                            <td>Sàng Lọc Sức Khỏe</td>
+                            <td>Vũ Cao Mạnh Tuấn - Nhóm O+</td>
+                            <td><span class="badge success">✅ Đạt</span></td>
+                        </tr>
+                        <tr>
+                            <td>3 giờ trước</td>
+                            <td>Tạo Sự Kiện</td>
+                            <td>Ngày hội hiến máu tại ĐH Công Thương</td>
+                            <td><span class="badge warning">⏳ Chờ mở</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- BLOOD INVENTORY QUICK VIEW -->
+                <h3 style="margin-top: 2rem; margin-bottom: 1rem;">🩸 Tồn Kho Máu Theo Nhóm</h3>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Nhóm Máu</th>
+                            <th>Số Lượng (đơn vị)</th>
+                            <th>Hạn Sử Dụng</th>
+                            <th>Trạng Thái</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>O+</strong></td>
+                            <td>45</td>
+                            <td>30 ngày</td>
+                            <td><span class="badge success">✅ Bình thường</span></td>
+                            <td><button class="btn-sm">Chi tiết</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>A+</strong></td>
+                            <td>32</td>
+                            <td>15 ngày</td>
+                            <td><span class="badge warning">⚠️ Sắp hết hạn</span></td>
+                            <td><button class="btn-sm">Chi tiết</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>B+</strong></td>
+                            <td>12</td>
+                            <td>25 ngày</td>
+                            <td><span class="badge warning">⚠️ Ít</span></td>
+                            <td><button class="btn-sm">Chi tiết</button></td>
+                        </tr>
+                        <tr>
+                            <td><strong>AB+</strong></td>
+                            <td>5</td>
+                            <td>5 ngày</td>
+                            <td><span class="badge danger">🔴 Nguy cấp</span></td>
+                            <td><button class="btn-sm danger">Cảnh báo</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check login
+        window.addEventListener('load', function() {
+            if (localStorage.getItem('isLoggedIn') !== 'true') {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            const userEmail = localStorage.getItem('userEmail');
+            const userRole = localStorage.getItem('userRole');
+            
+            // Check role
+            if (userRole !== 'admin' && userRole !== 'doctor') {
+                window.location.href = 'dashboard-user.html';
+                return;
+            }
+            
+            document.getElementById('userDisplay').textContent = userEmail.split('@')[0].toUpperCase() + ' (' + userRole + ')';
+        });
+
+        function handleLogout() {
+            if (confirm('Bạn có chắc muốn đăng xuất?')) {
+                localStorage.removeItem('isLoggedIn');
+                localStorage.removeItem('userEmail');
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('userName');
+                window.location.href = 'index.html';
+            }
+        }
+    </script>
+</body>
+</html>

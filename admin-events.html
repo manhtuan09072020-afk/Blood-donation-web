@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Sự Kiện - Admin</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <div class="container-admin">
+        <aside class="sidebar">
+            <h2 class="logo">Admin</h2>
+            <ul class="nav-links">
+                <li><a href="admin-dashboard.html">Dashboard</a></li>
+                <li><a href="admin-donors.html">👥 Người Hiến Máu</a></li>
+                <li><a href="admin-events.html" class="active">📅 Sự Kiện</a></li>
+                <li><a href="admin-registrations.html">📝 Đăng Ký</a></li>
+                <li><a href="admin-screening.html">🏥 Sàng Lọc</a></li>
+                <li><a href="admin-blood-inventory.html">📦 Kho Máu</a></li>
+                <li><a href="admin-blood-requests.html">🆘 Yêu Cầu Máu</a></li>
+                <li><a href="admin-notifications.html">📢 Thông Báo</a></li>
+                <li><a href="admin-reports.html">📊 Báo Cáo</a></li>
+                <li><a href="admin-users.html">👨‍💼 Tài Khoản</a></li>
+            </ul>
+        </aside>
+
+        <div class="main-content">
+            <nav class="navbar-admin">
+                <div class="navbar-title">📅 Quản Lý Sự Kiện & Đợt Hiến</div>
+                <div class="user-profile">
+                    <button class="btn-logout" onclick="handleLogout()">🚪 Đăng Xuất</button>
+                </div>
+            </nav>
+
+            <div class="dashboard-content">
+                <button class="btn-primary" style="margin-bottom: 1.5rem;" onclick="alert('Tạo sự kiện mới')">+ Tạo Sự Kiện</button>
+
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Tên Sự Kiện</th>
+                            <th>Ngày</th>
+                            <th>Địa Điểm</th>
+                            <th>Đã Đăng Ký / Tối Đa</th>
+                            <th>Trạng Thái</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Ngày Hội Hiến Máu HUIT</td>
+                            <td>25/11/2026</td>
+                            <td>Sân trường HUIT, Quận 12</td>
+                            <td>150 / 200</td>
+                            <td><span class="badge success">✅ Đang mở</span></td>
+                            <td><button class="btn-sm">Chi tiết</button></td>
+                        </tr>
+                        <tr>
+                            <td>Giọt Hồng Chia Sẻ</td>
+                            <td>10/10/2026</td>
+                            <td>Nhà Văn Hóa Thành Phố</td>
+                            <td>300 / 300</td>
+                            <td><span class="badge secondary">✅ Kết thúc</span></td>
+                            <td><button class="btn-sm">Báo cáo</button></td>
+                        </tr>
+                        <tr>
+                            <td>Hiến Máu Tại Bệnh Viện Chợ Rẫy</td>
+                            <td>05/12/2026</td>
+                            <td>BV Chợ Rẫy, Q1</td>
+                            <td>45 / 100</td>
+                            <td><span class="badge warning">⏳ Sắp tới</span></td>
+                            <td><button class="btn-sm">Quản lý</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function handleLogout() {
+            if (confirm('Đăng xuất?')) {
+                localStorage.clear();
+                window.location.href = 'index.html';
+            }
+        }
+        window.addEventListener('load', function() {
+            if (localStorage.getItem('isLoggedIn') !== 'true') {
+                window.location.href = 'login.html';
+            }
+        });
+    </script>
+</body>
+</html>

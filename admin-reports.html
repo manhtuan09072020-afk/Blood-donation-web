@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Báo Cáo - Admin</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <div class="container-admin">
+        <aside class="sidebar">
+            <h2 class="logo">Admin</h2>
+            <ul class="nav-links">
+                <li><a href="admin-dashboard.html">Dashboard</a></li>
+                <li><a href="admin-donors.html">👥 Người Hiến Máu</a></li>
+                <li><a href="admin-events.html">📅 Sự Kiện</a></li>
+                <li><a href="admin-registrations.html">📝 Đăng Ký</a></li>
+                <li><a href="admin-screening.html">🏥 Sàng Lọc</a></li>
+                <li><a href="admin-blood-inventory.html">📦 Kho Máu</a></li>
+                <li><a href="admin-blood-requests.html">🆘 Yêu Cầu Máu</a></li>
+                <li><a href="admin-notifications.html">📢 Thông Báo</a></li>
+                <li><a href="admin-reports.html" class="active">📊 Báo Cáo</a></li>
+                <li><a href="admin-users.html">👨‍💼 Tài Khoản</a></li>
+            </ul>
+        </aside>
+
+        <div class="main-content">
+            <nav class="navbar-admin">
+                <div class="navbar-title">📊 Báo Cáo & Thống Kê Hệ Thống</div>
+                <div class="user-profile">
+                    <button class="btn-logout" onclick="handleLogout()">🚪 Đăng Xuất</button>
+                </div>
+            </nav>
+
+            <div class="dashboard-content">
+                <div class="action-bar">
+                    <button class="btn-primary" onclick="alert('Xuất PDF')">📄 Xuất PDF</button>
+                    <button class="btn-primary" onclick="alert('Xuất Excel')">📊 Xuất Excel</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>🩸 Tổng Máu Nhập (Tháng)</h3>
+                        <p>450</p>
+                        <small style="color: var(--text-light);">đơn vị</small>
+                    </div>
+                    <div class="stat-card">
+                        <h3>📤 Tổng Máu Xuất (Tháng)</h3>
+                        <p>380</p>
+                        <small style="color: var(--text-light);">đơn vị</small>
+                    </div>
+                    <div class="stat-card">
+                        <h3>✅ Tỷ Lệ Sàng Lọc Đạt</h3>
+                        <p>85%</p>
+                        <small style="color: var(--text-light);">người đạt</small>
+                    </div>
+                    <div class="stat-card">
+                        <h3>🎯 Người Hiến Tháng Này</h3>
+                        <p>156</p>
+                        <small style="color: var(--text-light);">người</small>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 2rem; margin-bottom: 1rem;">📈 Chi Tiết Thống Kê</h3>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Tháng</th>
+                            <th>Người Hiến</th>
+                            <th>Máu Nhập (đvị)</th>
+                            <th>Máu Xuất (đvị)</th>
+                            <th>Sàng Lọc Đạt (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Tháng 9/2026</td>
+                            <td>156</td>
+                            <td>450</td>
+                            <td>380</td>
+                            <td>85%</td>
+                        </tr>
+                        <tr>
+                            <td>Tháng 8/2026</td>
+                            <td>142</td>
+                            <td>420</td>
+                            <td>360</td>
+                            <td>82%</td>
+                        </tr>
+                        <tr>
+                            <td>Tháng 7/2026</td>
+                            <td>128</td>
+                            <td>380</td>
+                            <td>340</td>
+                            <td>80%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function handleLogout() {
+            if (confirm('Đăng xuất?')) {
+                localStorage.clear();
+                window.location.href = 'index.html';
+            }
+        }
+        window.addEventListener('load', function() {
+            if (localStorage.getItem('isLoggedIn') !== 'true') {
+                window.location.href = 'login.html';
+            }
+        });
+    </script>
+</body>
+</html>

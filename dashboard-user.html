@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Hiến Máu</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #D32F2F;
+            --primary-dark: #B71C1C;
+            --secondary: #F5F5F5;
+            --text-dark: #212121;
+            --text-light: #616161;
+            --white: #FFFFFF;
+            --success: #43A047;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--secondary);
+            color: var(--text-dark);
+        }
+        .navbar {
+            background: var(--white);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-bottom: 3px solid var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .navbar-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        .navbar-menu {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        .navbar-link {
+            color: var(--text-light);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+        .navbar-link:hover, .navbar-link.active {
+            color: var(--primary);
+        }
+        .btn-logout {
+            background: var(--primary);
+            color: var(--white);
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-logout:hover {
+            background: var(--primary-dark);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .welcome-section {
+            background: var(--white);
+            padding: 2rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-left: 4px solid var(--primary);
+        }
+        .welcome-section h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        }
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .stat-label {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        .action-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .action-card {
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 2px solid transparent;
+        }
+        .action-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+        }
+        .action-icon { font-size: 3rem; margin-bottom: 1rem; }
+        .action-title {
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .action-desc {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+            margin-top: 2rem;
+        }
+        .events-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .event-card {
+            background: var(--white);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            transition: all 0.3s;
+        }
+        .event-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            transform: translateY(-3px);
+        }
+        .event-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: var(--white);
+            padding: 1rem;
+            font-weight: bold;
+        }
+        .event-body {
+            padding: 1rem;
+        }
+        .event-date, .event-location {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+        .event-capacity {
+            background: var(--secondary);
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+        .btn-register {
+            width: 100%;
+            background: var(--success);
+            color: var(--white);
+            border: none;
+            padding: 0.75rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-register:hover {
+            background: #2E7D32;
+        }
+        .footer {
+            background: var(--text-dark);
+            color: var(--white);
+            text-align: center;
+            padding: 1.5rem;
+            margin-top: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="navbar-logo">
+            <span>🩸</span>
+            <span>BloodDonation</span>
+        </div>
+        <div class="navbar-menu">
+            <a href="#" class="navbar-link active">Dashboard</a>
+            <a href="#" class="navbar-link">Sự Kiện</a>
+            <a href="#" class="navbar-link">Lịch Sử Hiến</a>
+            <a href="#" class="navbar-link">Hồ Sơ</a>
+            <button class="btn-logout" onclick="handleLogout()">🚪 Đăng Xuất</button>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <div class="container">
+        <!-- WELCOME SECTION -->
+        <div class="welcome-section">
+            <h1>Xin chào, <span id="userName">User</span>! 👋</h1>
+            <p>Cảm ơn bạn đã tham gia vào sứ mệnh cứu sống con người qua việc hiến máu.</p>
+        </div>
+
+        <!-- STATS -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">🩸</div>
+                <div class="stat-label">Số Lần Hiến</div>
+                <div class="stat-value" id="donationTimes">5</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-label">Điểm Tích Lũy</div>
+                <div class="stat-value" id="points">2,500</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📅</div>
+                <div class="stat-label">Lần Hiến Gần Nhất</div>
+                <div class="stat-value" id="lastDonation">15/10</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🎖️</div>
+                <div class="stat-label">Nhóm Máu</div>
+                <div class="stat-value" id="bloodType">O+</div>
+            </div>
+        </div>
+
+        <!-- ACTION CARDS -->
+        <div class="action-cards">
+            <div class="action-card" onclick="alert('Xem sự kiện hiến máu sắp tới')">
+                <div class="action-icon">📅</div>
+                <div class="action-title">Sự Kiện</div>
+                <div class="action-desc">Tìm sự kiện gần bạn</div>
+            </div>
+            <div class="action-card" onclick="alert('Xem yêu cầu hiến máu khẩn cấp')">
+                <div class="action-icon">🆘</div>
+                <div class="action-title">Yêu Cầu Máu</div>
+                <div class="action-desc">Những lời gọi khẩn cấp</div>
+            </div>
+            <div class="action-card" onclick="alert('Xem lịch sử hiến máu của bạn')">
+                <div class="action-icon">📋</div>
+                <div class="action-title">Lịch Sử</div>
+                <div class="action-desc">Các lần hiến trước</div>
+            </div>
+            <div class="action-card" onclick="alert('Chỉnh sửa thông tin cá nhân')">
+                <div class="action-icon">👤</div>
+                <div class="action-title">Hồ Sơ</div>
+                <div class="action-desc">Thông tin của bạn</div>
+            </div>
+        </div>
+
+        <!-- UPCOMING EVENTS -->
+        <h2 class="section-title">📅 Sự Kiện Sắp Tới</h2>
+        <div class="events-grid">
+            <div class="event-card">
+                <div class="event-header">Ngày Hội Hiến Máu HUIT</div>
+                <div class="event-body">
+                    <div class="event-date">📅 25/11/2026</div>
+                    <div class="event-location">📍 Sân trường HUIT, Q.12</div>
+                    <div class="event-capacity">Đã đăng ký: 150/200 chỗ</div>
+                    <button class="btn-register" onclick="alert('Đã đăng ký thành công!')">✅ Đã Đăng Ký</button>
+                </div>
+            </div>
+
+            <div class="event-card">
+                <div class="event-header">Hiến Máu Tại BV Chợ Rẫy</div>
+                <div class="event-body">
+                    <div class="event-date">📅 05/12/2026</div>
+                    <div class="event-location">📍 BV Chợ Rẫy, Q.1</div>
+                    <div class="event-capacity">Đã đăng ký: 45/100 chỗ</div>
+                    <button class="btn-register" onclick="alert('Đăng ký thành công!')">✨ Đăng Ký Ngay</button>
+                </div>
+            </div>
+
+            <div class="event-card">
+                <div class="event-header">Hiến Máu Tại ĐH Kinh Tế</div>
+                <div class="event-body">
+                    <div class="event-date">📅 10/12/2026</div>
+                    <div class="event-location">📍 ĐH Kinh Tế TP.HCM, Q.10</div>
+                    <div class="event-capacity">Đã đăng ký: 75/150 chỗ</div>
+                    <button class="btn-register" onclick="alert('Đăng ký thành công!')">✨ Đăng Ký Ngay</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- BLOOD REQUEST -->
+        <h2 class="section-title">🆘 Yêu Cầu Hiến Máu Khẩn Cấp</h2>
+        <div class="events-grid">
+            <div class="event-card">
+                <div class="event-header" style="background: linear-gradient(135deg, #FB8C00, #E65100);">Cần Máu AB+ Ngay</div>
+                <div class="event-body">
+                    <div class="event-date">⚠️ Mức độ: Khẩn cấp</div>
+                    <div class="event-location">🏥 Bệnh viện Thống Nhất</div>
+                    <div class="event-capacity" style="background: #FFF3E0;">Cần: 10 đơn vị</div>
+                    <button class="btn-register" style="background: #FB8C00;" onclick="alert('Cảm ơn bạn đã đồng ý hiến!')">🆘 Tôi Sẵn Sàng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p>&copy; 2026 Hệ thống Hiến máu Nhân đạo. Cảm ơn bạn đã đóng góp!</p>
+    </footer>
+
+    <script>
+        window.addEventListener('load', function() {
+            // Check login
+            if (localStorage.getItem('isLoggedIn') !== 'true') {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            const userRole = localStorage.getItem('userRole');
+            const userEmail = localStorage.getItem('userEmail');
+            
+            // Redirect if admin/doctor
+            if (userRole === 'admin' || userRole === 'doctor') {
+                window.location.href = 'admin-dashboard.html';
+                return;
+            }
+            
+            // Display user info
+            const userName = userEmail.split('@')[0];
+            document.getElementById('userName').textContent = userName.toUpperCase();
+        });
+
+        function handleLogout() {
+            if (confirm('Bạn có chắc muốn đăng xuất?')) {
+                localStorage.clear();
+                window.location.href = 'index.html';
+            }
+        }
+    </script>
+</body>
+</html>
