@@ -94,16 +94,16 @@ document.addEventListener('DOMContentLoaded', function() {
       const isPasswordValid = validatePassword();
       
       if (isEmailValid && isPasswordValid) {
-        // Simulate login process
+        // Submit login form via API
         submitLoginForm();
       }
     });
   }
 
   // ================================================
-  // SUBMIT LOGIN FORM
+  // SUBMIT LOGIN FORM (ĐÃ KẾT NỐI API THẬT)
   // ================================================
-  function submitLoginForm() {
+  async function submitLoginForm() {
     const submitBtn = loginForm.querySelector('.btn-login-submit');
     const originalText = submitBtn.innerHTML;
     
@@ -111,20 +111,44 @@ document.addEventListener('DOMContentLoaded', function() {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span>Đang xử lý...</span>';
     
-    // Simulate API call
-    setTimeout(() => {
-      // Reset button
+    try {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      // Gọi API Đăng nhập từ api-config.js
+      const data = await apiCall('/auth/login', 'POST', { email, password });
+
+      if (data && data.token) {
+        // Lưu Token và thông tin người dùng vào LocalStorage
+        setAuthToken(data.token);
+        if (data.user) {
+          localStorage.setItem('userEmail', data.user.email || '');
+          localStorage.setItem('userRole', data.user.role !== undefined ? data.user.role : '');
+          localStorage.setItem('userName', data.user.name || '');
+        }
+        localStorage.setItem('isLoggedIn', 'true');
+
+        // Hiển thị thông báo thành công
+        showSuccessMessage();
+
+        // Chuyển hướng sau 1.5 giây
+        setTimeout(() => {
+          // Phân quyền điều hướng dựa vào Role (VD: Role 2 = Admin, Role 1 = Doctor, Role 0 = User)
+          if (data.user && (data.user.role === 2 || data.user.role === 1)) {
+            window.location.href = 'admin-dashboard.html';
+          } else {
+            window.location.href = 'dashboard-user.html';
+          }
+        }, 1500);
+      }
+    } catch (error) {
+      // Khôi phục nút bấm khi gặp lỗi
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalText;
-      
-      // Show success message
-      showSuccessMessage();
-      
-      // Redirect to dashboard after 2 seconds
-      setTimeout(() => {
-        window.location.href = 'index.html';
-      }, 2000);
-    }, 1500);
+
+      // Hiển thị thông báo lỗi lên giao diện
+      showError('password', 'passwordError', error.message || 'Đăng nhập không thành công. Vui lòng kiểm tra lại!');
+    }
   }
 
   // ================================================

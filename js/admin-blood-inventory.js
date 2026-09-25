@@ -1,0 +1,1 @@
+const inventory = await apiCall('/bloodinventory/summary', 'GET');

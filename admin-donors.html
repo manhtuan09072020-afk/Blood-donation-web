@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản Lý Người Hiến Máu - Admin</title>
-    <link rel="stylesheet" href="admin-style.css">
+    <link rel="stylesheet" href="css/admin-style.css">
     <style>
         body { margin: 0; }
         .modal {
@@ -87,7 +87,7 @@
                             <th>Hành Động</th>
                         </tr>
                     </thead>
-                    <tbody id="donorsTable">
+                    <tbody id="donorsTableBody">
                         <tr>
                             <td>Vũ Cao Mạnh Tuấn</td>
                             <td>O+</td>
@@ -221,6 +221,81 @@
                 window.location.href = 'login.html';
             }
         });
+
+        // Hàm tự động chạy khi tải trang
+    document.addEventListener('DOMContentLoaded', () => {
+        checkAuth();       // Kiểm tra đăng nhập
+        loadDonorsList();  // Tải danh sách người hiến máu
+    });
+
+    // 1. Kiểm tra quyền truy cập
+    function checkAuth() {
+        const isLoggedIn = localStorage.getItem('isLoggedIn');
+        const role = localStorage.getItem('userRole');
+
+        if (!isLoggedIn || (role !== 'admin' && role !== 'doctor')) {
+            alert('Cảnh báo: Bạn cần đăng nhập tài khoản Quản trị để vào trang này!');
+            window.location.href = 'login.html';
+        }
+    }
+
+    // 2. Gọi API lấy danh sách Người hiến máu từ Backend .NET
+    async function loadDonorsList() {
+        const token = localStorage.getItem('authToken');
+        const baseUrl = (typeof API_BASE_URL !== 'undefined') ? API_BASE_URL : 'https://localhost:7298/api';
+        const tableBody = document.getElementById('donorsTableBody'); 
+
+        try {
+            const response = await fetch(`${baseUrl}/Donors`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` // Gửi JWT Token lên Backend
+                }
+            });
+
+            if (response.ok) {
+                const donors = await response.json();
+                renderDonorsTable(donors);
+            } else if (response.status === 401 || response.status === 403) {
+                alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!');
+                window.location.href = 'login.html';
+            } else {
+                console.error('Lỗi lấy dữ liệu:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Không thể kết nối đến API Backend:', error);
+        }
+    }
+
+    // 3. Hiển thị dữ liệu lên bảng HTML
+    function renderDonorsTable(donors) {
+        const tableBody = document.getElementById('donorsTableBody');
+        if (!tableBody) return;
+
+        if (donors.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center;">Chưa có dữ liệu người hiến máu.</td></tr>`;
+            return;
+        }
+
+        tableBody.innerHTML = donors.map((donor, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td><strong>${donor.fullName || donor.name}</strong></td>
+                <td><span class="badge-blood">${donor.bloodType || 'Chưa xác định'}</span></td>
+                <td>${donor.phone || 'N/A'}</td>
+                <td>${donor.email || 'N/A'}</td>
+                <td>
+                    <button class="btn-action edit" onclick="editDonor('${donor.id}')">Sửa</button>
+                    <button class="btn-action delete" onclick="deleteDonor('${donor.id}')">Xóa</button>
+                </td>
+            </tr>
+        `).join('');
+    }
     </script>
+    <script src="js/api-config.js"></script>
+
+    <!-- 2. Nhúng file xử lý logic của trang Admin Donors -->
+    <script src="js/admin-donors.js"></script>
 </body>
 </html>

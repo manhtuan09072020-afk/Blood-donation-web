@@ -4,177 +4,510 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Hệ Thống Hiến Máu</title>
-    <link rel="stylesheet" href="admin-style.css">
+    <link rel="stylesheet" href="css/admin-style.css">
     <style>
-        body { margin: 0; }
+        /* ============================================
+           STAT CARD VARIANTS (Màu sắc khác nhau)
+           ============================================ */
+        
+        .stat-card.donors {
+            border-left-color: #2196F3;
+        }
+        
+        .stat-card.donors p {
+            color: #2196F3;
+        }
+        
+        .stat-card.donors::before {
+            background: radial-gradient(circle, rgba(33, 150, 243, 0.08) 0%, transparent 70%);
+        }
+        
+        .stat-card.requests {
+            border-left-color: #FF9800;
+        }
+        
+        .stat-card.requests p {
+            color: #FF9800;
+        }
+        
+        .stat-card.requests::before {
+            background: radial-gradient(circle, rgba(255, 152, 0, 0.08) 0%, transparent 70%);
+        }
+        
+        .stat-card.events {
+            border-left-color: #4CAF50;
+        }
+        
+        .stat-card.events p {
+            color: #4CAF50;
+        }
+        
+        .stat-card.events::before {
+            background: radial-gradient(circle, rgba(76, 175, 80, 0.08) 0%, transparent 70%);
+        }
+        
+        .stat-card.appointments {
+            border-left-color: #9C27B0;
+        }
+        
+        .stat-card.appointments p {
+            color: #9C27B0;
+        }
+        
+        .stat-card.appointments::before {
+            background: radial-gradient(circle, rgba(156, 39, 176, 0.08) 0%, transparent 70%);
+        }
+        
+        /* ============================================
+           ACTIVITY CARDS
+           ============================================ */
+        
+        .activity-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        
+        .activity-card {
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border-top: 4px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+        
+        .activity-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        }
+        
+        .activity-card h4 {
+            font-size: 1.1rem;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .activity-card p {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+        
+        /* ============================================
+           QUICK ACTION GRID
+           ============================================ */
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .action-btn {
+            background: linear-gradient(135deg, var(--white) 0%, #FAFAFA 100%);
+            border: 2px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+        
+        .action-btn:hover {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, #FFF8F8 0%, #FFFFFF 100%);
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(211, 47, 47, 0.15);
+        }
+        
+        .action-btn-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        
+        /* ============================================
+           BLOOD INVENTORY MINI
+           ============================================ */
+        
+        .blood-mini-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .blood-mini-card {
+            background: var(--white);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border-bottom: 3px solid var(--border);
+            transition: all 0.3s ease;
+        }
+        
+        .blood-mini-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .blood-type {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+        }
+        
+        .blood-quantity {
+            font-size: 1.2rem;
+            color: var(--primary);
+            font-weight: 700;
+        }
+        
+        .blood-status {
+            font-size: 0.8rem;
+            color: var(--text-lighter);
+            margin-top: 0.5rem;
+        }
+        
+        /* ============================================
+           WELCOME BANNER
+           ============================================ */
+        
+        .welcome-banner {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: var(--white);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(211, 47, 47, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .welcome-banner h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .welcome-banner p {
+            font-size: 0.95rem;
+            opacity: 0.95;
+        }
+        
+        .welcome-banner-icon {
+            font-size: 3rem;
+            opacity: 0.8;
+        }
+        
+        /* ============================================
+           RECENT ACTIVITY TABLE
+           ============================================ */
+        
+        .recent-activity {
+            margin-top: 2rem;
+        }
+        
+        .recent-activity-table {
+            width: 100%;
+            margin-top: 1rem;
+        }
+        
+        .recent-activity-table tr {
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .recent-activity-table tr:last-child {
+            border-bottom: none;
+        }
+        
+        .recent-activity-table td {
+            padding: 1rem;
+            font-size: 0.95rem;
+        }
+        
+        .activity-time {
+            color: var(--text-lighter);
+            font-size: 0.85rem;
+        }
+        
+        .activity-person {
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+        
+        .activity-action {
+            color: var(--text-light);
+        }
+        
+        /* ============================================
+           LOADING ANIMATION
+           ============================================ */
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .stats-grid .stat-card {
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        .stats-grid .stat-card:nth-child(1) { animation-delay: 0.1s; }
+        .stats-grid .stat-card:nth-child(2) { animation-delay: 0.2s; }
+        .stats-grid .stat-card:nth-child(3) { animation-delay: 0.3s; }
+        .stats-grid .stat-card:nth-child(4) { animation-delay: 0.4s; }
     </style>
 </head>
 <body>
     <div class="container-admin">
         <!-- SIDEBAR -->
         <aside class="sidebar">
-            <h2 class="logo">Admin</h2>
-            <ul class="nav-links">
-                <li><a href="admin-dashboard.html" class="active">Dashboard</a></li>
-                <li><a href="admin-donors.html">👥 Người Hiến Máu</a></li>
-                <li><a href="admin-events.html">📅 Sự Kiện</a></li>
-                <li><a href="admin-registrations.html">📝 Đăng Ký</a></li>
-                <li><a href="admin-screening.html">🏥 Sàng Lọc</a></li>
-                <li><a href="admin-blood-reception.html">🩸 Tiếp Nhận Máu</a></li>
-                <li><a href="admin-blood-inventory.html">📦 Kho Máu</a></li>
-                <li><a href="admin-blood-requests.html">🆘 Yêu Cầu Máu</a></li>
-                <li><a href="admin-notifications.html">📢 Thông Báo</a></li>
-                <li><a href="admin-reports.html">📊 Báo Cáo</a></li>
-                <li><a href="admin-users.html">👨‍💼 Tài Khoản</a></li>
-            </ul>
+            <div class="logo">Hệ Thống Hiến Máu</div>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="admin-dashboard.html" class="active">📊 Tổng Quan</a></li>
+                    <li><a href="admin-donors.html">👥 Người Hiến Máu</a></li>
+                    <li><a href="admin-events.html">📅 Sự Kiện</a></li>
+                    <li><a href="admin-registrations.html">📝 Duyệt Đăng Ký</a></li>
+                    <li><a href="admin-screening.html">🏥 Sàng Lọc Sức Khỏe</a></li>
+                    <li><a href="admin-blood-reception.html">🩸 Tiếp Nhận Máu</a></li>
+                    <li><a href="admin-blood-inventory.html">📦 Kho Máu</a></li>
+                    <li><a href="admin-blood-requests.html">🆘 Yêu Cầu từ BV</a></li>
+                    <li><a href="admin-notifications.html">📢 Thông Báo</a></li>
+                    <li><a href="admin-reports.html">📊 Báo Cáo</a></li>
+                    <li><a href="admin-users.html">👨‍💼 Tài Khoản</a></li>
+                </ul>
+            </nav>
         </aside>
 
         <!-- MAIN CONTENT -->
-        <div class="main-content">
+        <main class="main-content">
+            <!-- NAVBAR -->
             <nav class="navbar-admin">
-                <div class="navbar-title">📊 Tổng Quan Hệ Thống</div>
+                <h2 class="navbar-title">📊 Tổng Quan Hệ Thống</h2>
                 <div class="user-profile">
-                    <span id="userDisplay">Admin</span>
-                    <button class="btn-logout" onclick="handleLogout()">🚪 Đăng Xuất</button>
+                    <span>👤 <span id="userNameDisplay">Admin</span></span>
+                    <button class="btn-logout" onclick="logout()">Đăng Xuất</button>
                 </div>
             </nav>
 
+            <!-- DASHBOARD CONTENT -->
             <div class="dashboard-content">
-                <!-- STATS -->
+                <!-- WELCOME BANNER -->
+                <div class="welcome-banner">
+                    <div>
+                        <h1>Chào mừng trở lại! 🩸</h1>
+                        <p>Hôm nay là <span id="currentDate"></span>. Tất cả các chỉ số đang chạy tốt.</p>
+                    </div>
+                    <div class="welcome-banner-icon">🏥</div>
+                </div>
+
+                <!-- STATS GRID -->
                 <div class="stats-grid">
-                    <div class="stat-card">
-                        <h3>👥 Tổng Người Hiến Máu</h3>
-                        <p id="totalDonors">1,245</p>
+                    <div class="stat-card donors">
+                        <h3>👥 Người Hiến Máu</h3>
+                        <p id="donorCount">1,245</p>
+                        <div class="sub-text">Tăng 12 người tuần này</div>
                     </div>
-                    <div class="stat-card">
-                        <h3>🩸 Đơn Vị Máu Tồn Kho</h3>
-                        <p id="totalBlood">320</p>
+
+                    <div class="stat-card requests">
+                        <h3>🆘 Yêu Cầu Khẩn Cấp</h3>
+                        <p id="requestCount">320</p>
+                        <div class="sub-text">Chờ xử lý: 5 yêu cầu</div>
                     </div>
-                    <div class="stat-card">
-                        <h3>📅 Sự Kiện Sắp Tới</h3>
-                        <p id="upcomingEvents">3</p>
+
+                    <div class="stat-card events">
+                        <h3>📅 Đợt Hiến Máu</h3>
+                        <p id="eventCount">3</p>
+                        <div class="sub-text">Trong tuần này</div>
                     </div>
-                    <div class="stat-card">
-                        <h3>⏳ Yêu Cầu Chờ Duyệt</h3>
-                        <p id="pendingRequests">5</p>
+
+                    <div class="stat-card appointments">
+                        <h3>📋 Sự Kiện Sắp Tới</h3>
+                        <p id="appointmentCount">5</p>
+                        <div class="sub-text">Trong 7 ngày tới</div>
                     </div>
                 </div>
 
-                <!-- RECENT ACTIVITY -->
-                <h3 style="margin-top: 2rem; margin-bottom: 1rem;">📝 Hoạt Động Gần Đây</h3>
-                <table class="admin-table">
-                    <thead>
-                        <tr>
-                            <th>Thời Gian</th>
-                            <th>Hành Động</th>
-                            <th>Chi Tiết</th>
-                            <th>Trạng Thái</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>10 phút trước</td>
-                            <td>Nhập Kho</td>
-                            <td>50 đơn vị máu O+ từ sự kiện HUIT</td>
-                            <td><span class="badge success">✅ Thành công</span></td>
-                        </tr>
-                        <tr>
-                            <td>1 giờ trước</td>
-                            <td>Duyệt Yêu Cầu</td>
-                            <td>Bệnh viện Chợ Rẫy (20 đơn vị AB+)</td>
-                            <td><span class="badge success">✅ Đã cấp phát</span></td>
-                        </tr>
-                        <tr>
-                            <td>2 giờ trước</td>
-                            <td>Sàng Lọc Sức Khỏe</td>
-                            <td>Vũ Cao Mạnh Tuấn - Nhóm O+</td>
-                            <td><span class="badge success">✅ Đạt</span></td>
-                        </tr>
-                        <tr>
-                            <td>3 giờ trước</td>
-                            <td>Tạo Sự Kiện</td>
-                            <td>Ngày hội hiến máu tại ĐH Công Thương</td>
-                            <td><span class="badge warning">⏳ Chờ mở</span></td>
-                        </tr>
-                    </tbody>
-                </table>
+                <!-- QUICK ACTIONS -->
+                <div class="section-header">
+                    <h2>⚡ Hành Động Nhanh</h2>
+                </div>
+                <div class="quick-actions">
+                    <a href="admin-events.html" class="action-btn">
+                        <span class="action-btn-icon">➕</span>
+                        <span>Thêm Sự Kiện</span>
+                    </a>
+                    <a href="admin-donors.html" class="action-btn">
+                        <span class="action-btn-icon">➕</span>
+                        <span>Thêm Người Hiến</span>
+                    </a>
+                    <a href="admin-blood-reception.html" class="action-btn">
+                        <span class="action-btn-icon">🩸</span>
+                        <span>Nhập Máu Mới</span>
+                    </a>
+                    <a href="admin-blood-inventory.html" class="action-btn">
+                        <span class="action-btn-icon">📦</span>
+                        <span>Xem Kho Máu</span>
+                    </a>
+                </div>
 
-                <!-- BLOOD INVENTORY QUICK VIEW -->
-                <h3 style="margin-top: 2rem; margin-bottom: 1rem;">🩸 Tồn Kho Máu Theo Nhóm</h3>
-                <table class="admin-table">
-                    <thead>
-                        <tr>
-                            <th>Nhóm Máu</th>
-                            <th>Số Lượng (đơn vị)</th>
-                            <th>Hạn Sử Dụng</th>
-                            <th>Trạng Thái</th>
-                            <th>Hành Động</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>O+</strong></td>
-                            <td>45</td>
-                            <td>30 ngày</td>
-                            <td><span class="badge success">✅ Bình thường</span></td>
-                            <td><button class="btn-sm">Chi tiết</button></td>
-                        </tr>
-                        <tr>
-                            <td><strong>A+</strong></td>
-                            <td>32</td>
-                            <td>15 ngày</td>
-                            <td><span class="badge warning">⚠️ Sắp hết hạn</span></td>
-                            <td><button class="btn-sm">Chi tiết</button></td>
-                        </tr>
-                        <tr>
-                            <td><strong>B+</strong></td>
-                            <td>12</td>
-                            <td>25 ngày</td>
-                            <td><span class="badge warning">⚠️ Ít</span></td>
-                            <td><button class="btn-sm">Chi tiết</button></td>
-                        </tr>
-                        <tr>
-                            <td><strong>AB+</strong></td>
-                            <td>5</td>
-                            <td>5 ngày</td>
-                            <td><span class="badge danger">🔴 Nguy cấp</span></td>
-                            <td><button class="btn-sm danger">Cảnh báo</button></td>
-                        </tr>
-                    </tbody>
-                </table>
+                <!-- BLOOD INVENTORY MINI -->
+                <div class="section-header">
+                    <h2>🩸 Tồn Kho Máu Hiện Tại</h2>
+                </div>
+                <div class="blood-mini-grid">
+                    <div class="blood-mini-card">
+                        <div class="blood-type">O+</div>
+                        <div class="blood-quantity">45 đơn vị</div>
+                        <div class="blood-status">✅ Bình thường</div>
+                    </div>
+                    <div class="blood-mini-card">
+                        <div class="blood-type">O-</div>
+                        <div class="blood-quantity">12 đơn vị</div>
+                        <div class="blood-status">⚠️ Cảnh báo</div>
+                    </div>
+                    <div class="blood-mini-card">
+                        <div class="blood-type">A+</div>
+                        <div class="blood-quantity">32 đơn vị</div>
+                        <div class="blood-status">✅ Bình thường</div>
+                    </div>
+                    <div class="blood-mini-card">
+                        <div class="blood-type">B+</div>
+                        <div class="blood-quantity">28 đơn vị</div>
+                        <div class="blood-status">✅ Bình thường</div>
+                    </div>
+                </div>
+
+                <!-- RECENT ACTIVITIES -->
+                <div class="section-header">
+                    <h2>📊 Hoạt Động Gần Đây</h2>
+                </div>
+                <div class="recent-activity">
+                    <table class="recent-activity-table">
+                        <thead>
+                            <tr>
+                                <th>Thời Gian</th>
+                                <th>Người Dùng</th>
+                                <th>Hành Động</th>
+                                <th>Chi Tiết</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="activity-time">10 phút trước</td>
+                                <td class="activity-person">Nguyễn Văn A</td>
+                                <td class="activity-action">Đăng ký hiến máu</td>
+                                <td>Sự kiện tại HCMC</td>
+                            </tr>
+                            <tr>
+                                <td class="activity-time">1 giờ trước</td>
+                                <td class="activity-person">Trần Thị B</td>
+                                <td class="activity-action">Yêu cầu máu</td>
+                                <td>Máu O+ - Gấp</td>
+                            </tr>
+                            <tr>
+                                <td class="activity-time">3 giờ trước</td>
+                                <td class="activity-person">Hệ Thống</td>
+                                <td class="activity-action">Nhập kho máu</td>
+                                <td>50 đơn vị máu A+</td>
+                            </tr>
+                            <tr>
+                                <td class="activity-time">Hôm qua</td>
+                                <td class="activity-person">Lê Văn C</td>
+                                <td class="activity-action">Hoàn thành sàng lọc</td>
+                                <td>Sức khỏe: Đạt</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- FOOTER STATS -->
+                <div class="section-header" style="margin-top: 3rem;">
+                    <h2>📈 Thống Kê Tuần Này</h2>
+                </div>
+                <div class="activity-container">
+                    <div class="activity-card">
+                        <h4>💉 Người Hiến Mới</h4>
+                        <p>Tuần này có <strong>12 người</strong> mới đăng ký trở thành tình nguyện viên hiến máu. Số lượng tăng 25% so với tuần trước.</p>
+                    </div>
+                    <div class="activity-card">
+                        <h4>🩸 Lượng Máu Thu Được</h4>
+                        <p>Tổng cộng <strong>240 đơn vị máu</strong> được thu thập từ các sự kiện. Đạt 85% mục tiêu tuần.</p>
+                    </div>
+                    <div class="activity-card">
+                        <h4>🏥 Yêu Cầu Phục Vụ</h4>
+                        <p><strong>15 bệnh viện</strong> đã gửi yêu cầu cấp phát máu. Tất cả đều được đáp ứng kịp thời.</p>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 3rem; padding: 2rem; color: var(--text-lighter); font-size: 0.9rem;">
+                    <p>© 2026 Hệ Thống Quản Lý Hiến Máu Nhân Đạo | ĐH Công Thương TP.HCM</p>
+                </div>
             </div>
-        </div>
+        </main>
     </div>
 
     <script>
-        // Check login
-        window.addEventListener('load', function() {
-            if (localStorage.getItem('isLoggedIn') !== 'true') {
-                window.location.href = 'login.html';
-                return;
-            }
-            
-            const userEmail = localStorage.getItem('userEmail');
-            const userRole = localStorage.getItem('userRole');
-            
-            // Check role
-            if (userRole !== 'admin' && userRole !== 'doctor') {
-                window.location.href = 'dashboard-user.html';
-                return;
-            }
-            
-            document.getElementById('userDisplay').textContent = userEmail.split('@')[0].toUpperCase() + ' (' + userRole + ')';
-        });
-
-        function handleLogout() {
-            if (confirm('Bạn có chắc muốn đăng xuất?')) {
-                localStorage.removeItem('isLoggedIn');
-                localStorage.removeItem('userEmail');
-                localStorage.removeItem('userRole');
-                localStorage.removeItem('userName');
-                window.location.href = 'index.html';
-            }
+        // Kiểm tra đăng nhập
+        if (!localStorage.getItem('isLoggedIn')) {
+            window.location.href = 'login.html';
         }
+
+        // Hiển thị thông tin user
+        const userEmail = localStorage.getItem('userEmail') || 'Admin';
+        const userName = localStorage.getItem('userName') || 'Admin';
+        document.getElementById('userNameDisplay').textContent = userName.split('@')[0] || 'Admin';
+
+        // Hiển thị ngày hiện tại
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('vi-VN', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        document.getElementById('currentDate').textContent = dateStr;
+
+        // Đăng xuất
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'index.html';
+        }
+
+        // Kiểm tra role
+        const userRole = localStorage.getItem('userRole');
+        if (userRole !== 'admin' && userRole !== 'doctor') {
+            window.location.href = 'dashboard-user.html';
+        }
+
+        // Active nav link
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            if (link.getAttribute('href') === 'admin-dashboard.html') {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
     </script>
 </body>
 </html>

@@ -200,11 +200,11 @@
 </head>
 <body>
     <nav class="navbar">
-        <a href="index-new.html" class="navbar-logo">
+        <a href="index.html" class="navbar-logo">
             <span>🩸</span>
             <span>BloodDonation</span>
         </a>
-        <a href="index-new.html" class="navbar-link">← Quay lại</a>
+        <a href="index.html" class="navbar-link">← Quay lại</a>
     </nav>
 
     <div class="container">
@@ -253,17 +253,9 @@
                 </div>
 
                 <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--text-light);">
-                    <p><strong>Test Account (User):</strong></p>
-                    <p>Email: test@example.com</p>
-                    <p>Password: password123</p>
-                    <hr style="margin: 0.75rem 0; border: none; border-top: 1px solid var(--border);">
-                    <p><strong>Test Account (Admin):</strong></p>
-                    <p>Email: admin@hospital.com</p>
-                    <p>Password: admin123</p>
-                    <hr style="margin: 0.75rem 0; border: none; border-top: 1px solid var(--border);">
-                    <p><strong>Test Account (Doctor):</strong></p>
-                    <p>Email: doctor@hospital.com</p>
-                    <p>Password: doctor123</p>
+                    <p><strong>Test Account (Admin Database):</strong></p>
+                    <p>Email: admin@gmail.com</p>
+                    <p>Password: 123456</p>
                 </div>
             </div>
         </div>
@@ -273,13 +265,16 @@
         <p>&copy; 2026 Hệ thống Hiến máu Nhân đạo. Bảo lưu mọi quyền.</p>
     </footer>
 
+    <!-- File cấu hình API (chứa biến API_BASE_URL) -->
+    <script src="js/api-config.js"></script>
+
     <script>
         function togglePassword() {
             const pwd = document.getElementById('password');
             pwd.type = pwd.type === 'password' ? 'text' : 'password';
         }
 
-        function handleLogin(event) {
+        async function handleLogin(event) {
             event.preventDefault();
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value.trim();
@@ -287,39 +282,57 @@
 
             errorMsg.classList.remove('show');
 
-            // Validation
             if (!email || !password) {
                 showError('Vui lòng điền đầy đủ thông tin');
                 return;
             }
 
-            // Test credentials
-            let role = null;
-            if (email === 'admin@hospital.com' && password === 'admin123') {
-                role = 'admin';
-            } else if (email === 'doctor@hospital.com' && password === 'doctor123') {
-                role = 'doctor';
-            } else if (email === 'test@example.com' && password === 'password123') {
-                role = 'user';
-            } else {
-                showError('Email hoặc mật khẩu không đúng');
-                return;
-            }
+            // Lấy URL Backend từ api-config.js (Mặc định Port 7298 nếu chưa load được)
+            const baseUrl = (typeof API_BASE_URL !== 'undefined') ? API_BASE_URL : 'https://localhost:7298/api';
 
-            // Save to localStorage
-            localStorage.setItem('isLoggedIn', 'true');
-            localStorage.setItem('userEmail', email);
-            localStorage.setItem('userRole', role);
-            localStorage.setItem('userName', email.split('@')[0]);
+            try {
+                // Gọi API Đăng Nhập
+                const response = await fetch(`${baseUrl}/Auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
 
-            // Redirect based on role
-            setTimeout(() => {
-                if (role === 'admin' || role === 'doctor') {
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Lưu Token và thông tin User vào localStorage
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('authToken', data.token || data.accessToken || '');
+                    localStorage.setItem('userEmail', email);
+                    
+                    const role = data.role || (email.includes('admin') ? 'admin' : 'user');
+                    localStorage.setItem('userRole', role);
+
+                    // Chuyển hướng theo quyền
+                    setTimeout(() => {
+                        if (role === 'admin' || role === 'doctor' || role === 2) {
+                            window.location.href = 'admin-dashboard.html';
+                        } else {
+                            window.location.href = 'dashboard-user.html';
+                        }
+                    }, 300);
+                } else {
+                    const errData = await response.json().catch(() => ({}));
+                    showError(errData.message || 'Email hoặc mật khẩu không đúng!');
+                }
+            } catch (err) {
+                console.error('Lỗi kết nối API:', err);
+                // Fallback nếu chưa bật Backend API
+                if (email === 'admin@gmail.com' && password === '123456') {
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('userEmail', email);
+                    localStorage.setItem('userRole', 'admin');
                     window.location.href = 'admin-dashboard.html';
                 } else {
-                    window.location.href = 'dashboard-user.html';
+                    showError('Không thể kết nối Backend API! Hãy chắc chắn bạn đã nhấn F5 trong Visual Studio.');
                 }
-            }, 500);
+            }
         }
 
         function showError(msg) {
