@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Khám Sàng Lọc Sức Khỏe</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">🩸 Hiến Máu Nhân Đạo</div>
+            <nav>
+                <a href="index.html">Trang chủ</a>
+                <a href="admin-dashboard.html">Dashboard</a>
+                <a href="admin-health-screening.html">Khám sàng lọc</a>
+                <a href="admin-donors.html">Người hiến</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="page-wrapper">
+        <div class="container">
+            <div class="page-header">
+                <h1>📋 Khám Sàng Lọc Sức Khỏe</h1>
+                <p>Ghi nhận sinh hiệu, huyết sắc tố và đánh giá tình trạng sức khỏe</p>
+                <div class="breadcrumb">
+                    <a href="index.html">Trang chủ</a> > <span>Khám sàng lọc</span>
+                </div>
+            </div>
+
+            <div id="alertBox" class="alert"></div>
+
+            <div class="toolbar">
+                <button class="btn btn-primary" onclick="openAddModal()">+ Thêm Khám Sàng Lọc</button>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Tìm theo tên người hiến..." onkeyup="filterTable()">
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Người Hiến</th>
+                            <th>Ngày Khám</th>
+                            <th>Huyết Sắc Tố (g%)</th>
+                            <th>Huyết Áp (mmHg)</th>
+                            <th>Mạch (lần/phút)</th>
+                            <th>Kết Luận</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">📋</div>
+                <p>Chưa có phiếu khám sàng lọc. Bắt đầu bằng cách thêm mới.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Thêm/Sửa -->
+    <div id="screeningModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Thêm Phiếu Khám Sàng Lọc</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="screeningForm" onsubmit="saveScreening(event)">
+                <div class="form-group required">
+                    <label>Chọn Người Hiến</label>
+                    <select id="screeningDonor" required onchange="loadDonorInfo()">
+                        <option value="">-- Chọn --</option>
+                    </select>
+                </div>
+                <div class="form-group required">
+                    <label>Ngày Khám</label>
+                    <input type="date" id="screeningDate" required>
+                </div>
+                <div class="form-group required">
+                    <label>Huyết Sắc Tố (g%) - Tối thiểu 12.5 nữ, 13.5 nam</label>
+                    <input type="number" id="hemoglobin" required step="0.1" min="0">
+                </div>
+                <div class="form-group required">
+                    <label>Huyết Áp Tối Đa (mmHg) - Tối đa 180</label>
+                    <input type="number" id="bloodPressureMax" required min="0">
+                </div>
+                <div class="form-group required">
+                    <label>Huyết Áp Tối Thiểu (mmHg) - Tối thiểu 60</label>
+                    <input type="number" id="bloodPressureMin" required min="0">
+                </div>
+                <div class="form-group required">
+                    <label>Mạch (lần/phút) - 60-100 là bình thường</label>
+                    <input type="number" id="pulse" required min="0">
+                </div>
+                <div class="form-group">
+                    <label>Ghi Chú</label>
+                    <textarea id="screeningNote"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Hệ Thống Quản Lý Hiến Máu Nhân Đạo - ĐH Công Thương TP.HCM</p>
+    </footer>
+
+    <script>
+        let screenings = [];
+        let donors = [];
+
+        function loadData() {
+            donors = JSON.parse(localStorage.getItem('donors') || '[]');
+            screenings = JSON.parse(localStorage.getItem('screenings') || '[]');
+            renderTable();
+            populateDonorSelect();
+        }
+
+        function populateDonorSelect() {
+            const select = document.getElementById('screeningDonor');
+            select.innerHTML = '<option value="">-- Chọn --</option>';
+            donors.forEach(donor => {
+                select.innerHTML += `<option value="${donor.id}">${donor.name}</option>`;
+            });
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            if (screenings.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            tbody.innerHTML = screenings.map(s => {
+                const donor = donors.find(d => d.id == s.donorId);
+                const eligible = s.hemoglobin >= 12.5 && s.pulse >= 60 && s.pulse <= 100;
+                return `
+                    <tr>
+                        <td>#${s.id}</td>
+                        <td>${donor?.name || 'N/A'}</td>
+                        <td>${new Date(s.date).toLocaleDateString('vi-VN')}</td>
+                        <td>${s.hemoglobin}</td>
+                        <td>${s.bloodPressureMax}/${s.bloodPressureMin}</td>
+                        <td>${s.pulse}</td>
+                        <td><span class="badge ${eligible ? 'badge-success' : 'badge-danger'}">${eligible ? 'Đủ điều kiện' : 'Không đủ'}</span></td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" onclick="deleteScreening(${s.id})">Xóa</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openAddModal() {
+            document.getElementById('modalTitle').textContent = 'Thêm Phiếu Khám Sàng Lọc';
+            document.getElementById('screeningForm').reset();
+            document.getElementById('screeningDate').valueAsDate = new Date();
+            document.getElementById('screeningModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('screeningModal').classList.remove('active');
+        }
+
+        function saveScreening(event) {
+            event.preventDefault();
+
+            const newScreening = {
+                id: Math.max(...screenings.map(s => s.id), 0) + 1,
+                donorId: parseInt(document.getElementById('screeningDonor').value),
+                date: document.getElementById('screeningDate').value,
+                hemoglobin: parseFloat(document.getElementById('hemoglobin').value),
+                bloodPressureMax: parseInt(document.getElementById('bloodPressureMax').value),
+                bloodPressureMin: parseInt(document.getElementById('bloodPressureMin').value),
+                pulse: parseInt(document.getElementById('pulse').value),
+                note: document.getElementById('screeningNote').value
+            };
+
+            screenings.push(newScreening);
+            localStorage.setItem('screenings', JSON.stringify(screenings));
+            showAlert('Thêm phiếu khám thành công!', 'success');
+            closeModal();
+            renderTable();
+        }
+
+        function deleteScreening(id) {
+            if (confirm('Xóa phiếu khám này?')) {
+                screenings = screenings.filter(s => s.id !== id);
+                localStorage.setItem('screenings', JSON.stringify(screenings));
+                showAlert('Xóa thành công!', 'success');
+                renderTable();
+            }
+        }
+
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('table tbody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alertBox');
+            alert.textContent = message;
+            alert.className = `alert alert-${type} active`;
+            setTimeout(() => alert.classList.remove('active'), 3000);
+        }
+
+        window.addEventListener('load', loadData);
+    </script>
+</body>
+</html>

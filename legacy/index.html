@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Quản Lý Hiến Máu Nhân Đạo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #D32F2F;
+            --primary-dark: #B71C1C;
+            --text-dark: #1a1a1a;
+            --text-light: #666666;
+            --bg-light: #f5f5f5;
+            --bg-white: #ffffff;
+            --border-color: #e0e0e0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-dark);
+            background-color: var(--bg-light);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* NAVBAR */
+        .navbar {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .logo-icon {
+            font-size: 32px;
+        }
+
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .nav-menu a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: opacity 0.3s;
+        }
+
+        .nav-menu a:hover {
+            opacity: 0.8;
+        }
+
+        /* HERO SECTION */
+        .hero-section {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 80px 20px;
+            text-align: center;
+        }
+
+        .hero-section h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .hero-section p {
+            font-size: 18px;
+            opacity: 0.95;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 50px;
+        }
+
+        .btn {
+            padding: 12px 28px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background-color: white;
+            color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            background-color: #f5f5f5;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background-color: white;
+            color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+        }
+
+        .stat {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-number {
+            font-size: 42px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* FEATURES SECTION */
+        .features-section {
+            padding: 80px 20px;
+            background: var(--bg-white);
+        }
+
+        .features-section h2 {
+            font-size: 36px;
+            text-align: center;
+            margin-bottom: 50px;
+            color: var(--text-dark);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+        }
+
+        .feature-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 25px rgba(211, 47, 47, 0.15);
+            border-color: var(--primary);
+        }
+
+        .feature-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .feature-card h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: var(--text-dark);
+        }
+
+        .feature-card p {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-bottom: 20px;
+        }
+
+        .card-link {
+            color: var(--primary);
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .card-link:hover {
+            color: var(--primary-dark);
+        }
+
+        /* FOOTER */
+        .footer {
+            background: #1a1a1a;
+            color: white;
+            padding: 60px 20px 20px;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-section h3 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: var(--primary);
+        }
+
+        .footer-section p {
+            font-size: 14px;
+            line-height: 1.8;
+            color: #aaa;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid #333;
+            padding-top: 20px;
+            text-align: center;
+            font-size: 13px;
+            color: #888;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .hero-section h1 {
+                font-size: 32px;
+            }
+
+            .hero-section p {
+                font-size: 16px;
+            }
+
+            .nav-menu {
+                gap: 15px;
+                font-size: 14px;
+            }
+
+            .features-section h2 {
+                font-size: 28px;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <span class="logo-icon">🩸</span>
+                <span>Hiến Máu Nhân Đạo</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="index.html">Trang Chủ</a></li>
+                <li><a href="login.html">Đăng Nhập</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <header class="hero-section">
+        <div class="container">
+            <h1>🩸 Hệ Thống Quản Lý Hiến Máu Nhân Đạo</h1>
+            <p>Nền tảng quản lý toàn diện cho các hoạt động hiến máu, quản lý kho máu và chăm sóc người hiến</p>
+            <div class="hero-buttons">
+                <a href="login.html" class="btn btn-primary">Đăng Nhập Hệ Thống</a>
+                <a href="admin-dashboard.html" class="btn btn-secondary">Bảng Điều Khiển Admin</a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat">
+                    <div class="stat-number" id="stat-donors">0</div>
+                    <div class="stat-label">Người Hiến</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number" id="stat-events">0</div>
+                    <div class="stat-label">Đợt Hiến</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number" id="stat-donations">0</div>
+                    <div class="stat-label">Lần Hiến</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-number" id="stat-bags">0</div>
+                    <div class="stat-label">Túi Máu</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section class="features-section">
+        <div class="container">
+            <h2>Các Chức Năng Chính</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">👥</div>
+                    <h3>Quản lý Người Hiến</h3>
+                    <p>Quản lý hồ sơ, thông tin liên hệ, nhóm máu và lịch sử hiến máu.</p>
+                    <a href="admin-donors.html" class="card-link">Quản lý →</a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🧬</div>
+                    <h3>Quản lý Nhóm Máu</h3>
+                    <p>Danh mục nhóm máu (O, A, B, AB) với hệ Rh (+/-).</p>
+                    <a href="admin-blood-types.html" class="card-link">Quản lý →</a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🏥</div>
+                    <h3>Quản lý Điểm Hiến</h3>
+                    <p>Quản lý cơ sở y tế, địa điểm lưu động và năng lực tiếp nhận.</p>
+                    <a href="admin-centers.html" class="card-link">Quản lý →</a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📅</div>
+                    <h3>Quản lý Đợt Hiến</h3>
+                    <p>Tạo và quản lý chiến dịch hiến máu với thời gian, địa điểm, mục tiêu.</p>
+                    <a href="admin-events.html" class="card-link">Quản lý →</a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📋</div>
+                    <h3>Khám Sàng Lọc</h3>
+                    <p>Ghi nhận sinh hiệu, huyết sắc tố và đánh giá tình trạng sức khỏe.</p>
+                    <a href="admin-health-screening.html" class="card-link">Quản lý →</a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📜</div>
+                    <h3>Lịch Sử Hiến Máu</h3>
+                    <p>Tra cứu lịch sử hiến máu và xem chứng nhận điện tử.</p>
+                    <a href="admin-history.html" class="card-link">Xem →</a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📥</div>
+                    <h3>Tiếp Nhận Máu</h3>
+                    <p>Ghi nhận mã vạch, thể tích lấy và thời gian tiếp nhận máu.</p>
+                    <a href="admin-blood-reception.html" class="card-link">Quản lý →</a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📦</div>
+                    <h3>Quản lý Kho Máu</h3>
+                    <p>Theo dõi tồn kho, phân loại chế phẩm, hạn sử dụng theo thời gian thực.</p>
+                    <a href="admin-blood-inventory.html" class="card-link">Xem →</a>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Báo Cáo & Thống Kê</h3>
+                    <p>Xem báo cáo chi tiết về hoạt động hiến máu và kho máu.</p>
+                    <a href="admin-reports.html" class="card-link">Xem →</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Về Chúng Tôi</h3>
+                    <p>Hệ thống quản lý hiến máu nhân đạo được phát triển bởi sinh viên ĐH Công Thương TP.HCM.</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Liên Hệ</h3>
+                    <p>Email: support@hienmaunganhao.vn<br>Điện thoại: (028) 3 926 5263</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Liên Kết Nhanh</h3>
+                    <p><a href="admin-dashboard.html" style="color: var(--primary); text-decoration: none;">Dashboard Admin</a><br>
+                    <a href="admin-donors.html" style="color: var(--primary); text-decoration: none;">Quản lý Người Hiến</a><br>
+                    <a href="admin-events.html" style="color: var(--primary); text-decoration: none;">Quản lý Đợt Hiến</a></p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 Hệ Thống Quản Lý Hiến Máu Nhân Đạo - ĐH Công Thương TP.HCM. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function initializeData() {
+            if (!localStorage.getItem('donors')) {
+                localStorage.setItem('donors', JSON.stringify([
+                    { id: 1, name: 'Nguyễn Văn A', email: 'a@example.com', phone: '0901234567', blood: 'O+', donations: 5 },
+                    { id: 2, name: 'Trần Thị B', email: 'b@example.com', phone: '0912345678', blood: 'A+', donations: 3 }
+                ]));
+            }
+            if (!localStorage.getItem('events')) {
+                localStorage.setItem('events', JSON.stringify([
+                    { id: 1, name: 'Hiến máu tại ĐH HUST', date: '2026-10-15', location: 'Hà Nội', goal: 100, actual: 85 }
+                ]));
+            }
+            if (!localStorage.getItem('donations')) {
+                localStorage.setItem('donations', JSON.stringify([
+                    { id: 1, donorId: 1, eventId: 1, date: '2026-10-15', quantity: 450 }
+                ]));
+            }
+            if (!localStorage.getItem('bloodBags')) {
+                localStorage.setItem('bloodBags', JSON.stringify([
+                    { id: 1, barcode: 'BB001', bloodType: 'O+', quantity: 450, received: '2026-10-15', expiry: '2026-11-26' }
+                ]));
+            }
+        }
+
+        function updateStats() {
+            const donors = JSON.parse(localStorage.getItem('donors') || '[]');
+            const events = JSON.parse(localStorage.getItem('events') || '[]');
+            const donations = JSON.parse(localStorage.getItem('donations') || '[]');
+            const bags = JSON.parse(localStorage.getItem('bloodBags') || '[]');
+
+            document.getElementById('stat-donors').textContent = donors.length;
+            document.getElementById('stat-events').textContent = events.length;
+            document.getElementById('stat-donations').textContent = donations.length;
+            document.getElementById('stat-bags').textContent = bags.length;
+        }
+
+        window.addEventListener('load', function() {
+            initializeData();
+            updateStats();
+        });
+    </script>
+</body>
+</html>

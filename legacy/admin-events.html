@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Đợt Hiến Máu</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">🩸 Hiến Máu Nhân Đạo</div>
+            <nav>
+                <a href="index.html">Trang chủ</a>
+                <a href="admin-dashboard.html">Dashboard</a>
+                <a href="admin-donors.html">Người hiến</a>
+                <a href="admin-blood-types.html">Nhóm máu</a>
+                <a href="admin-centers.html">Điểm hiến</a>
+                <a href="admin-events.html">Đợt hiến</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="page-wrapper">
+        <div class="container">
+            <div class="page-header">
+                <h1>📅 Quản lý Đợt Hiến Máu</h1>
+                <p>Tạo và quản lý các chiến dịch hiến máu</p>
+                <div class="breadcrumb">
+                    <a href="index.html">Trang chủ</a> > <span>Đợt hiến</span>
+                </div>
+            </div>
+
+            <div id="alertBox" class="alert"></div>
+
+            <div class="toolbar">
+                <button class="btn btn-primary" onclick="openAddModal()">+ Tạo Đợt Hiến</button>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Tìm theo tên đợt hiến..." onkeyup="filterTable()">
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="eventTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tên Đợt Hiến</th>
+                            <th>Ngày Tổ Chức</th>
+                            <th>Địa Điểm</th>
+                            <th>Mục Tiêu</th>
+                            <th>Thực Tế</th>
+                            <th>Tiến Độ</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">📅</div>
+                <p>Chưa có đợt hiến. Bắt đầu bằng cách tạo đợt hiến mới.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Thêm/Sửa -->
+    <div id="eventModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Tạo Đợt Hiến Máu</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="eventForm" onsubmit="saveEvent(event)">
+                <div class="form-group required">
+                    <label>Tên Đợt Hiến</label>
+                    <input type="text" id="eventName" required placeholder="VD: Hiến máu Hè 2026">
+                </div>
+                <div class="form-group required">
+                    <label>Ngày Tổ Chức</label>
+                    <input type="date" id="eventDate" required>
+                </div>
+                <div class="form-group required">
+                    <label>Địa Điểm</label>
+                    <input type="text" id="eventLocation" required>
+                </div>
+                <div class="form-group required">
+                    <label>Mục Tiêu (người)</label>
+                    <input type="number" id="eventGoal" required min="1">
+                </div>
+                <div class="form-group">
+                    <label>Thực Tế Hiện Tại (người)</label>
+                    <input type="number" id="eventActual" value="0" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Ghi Chú</label>
+                    <textarea id="eventNote" placeholder="Ghi chú thêm về đợt hiến..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Hệ Thống Quản Lý Hiến Máu Nhân Đạo - ĐH Công Thương TP.HCM</p>
+    </footer>
+
+    <script>
+        let events = [];
+        let currentEditId = null;
+
+        function loadData() {
+            events = JSON.parse(localStorage.getItem('events') || '[]');
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            if (events.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            tbody.innerHTML = events.map(event => {
+                const progress = Math.round((event.actual / event.goal) * 100);
+                const progressClass = progress < 50 ? 'badge-danger' : progress < 100 ? 'badge-warning' : 'badge-success';
+                return `
+                    <tr>
+                        <td>#${event.id}</td>
+                        <td><strong>${event.name}</strong></td>
+                        <td>${new Date(event.date).toLocaleDateString('vi-VN')}</td>
+                        <td>${event.location}</td>
+                        <td>${event.goal}</td>
+                        <td>${event.actual}</td>
+                        <td><span class="badge ${progressClass}">${progress}%</span></td>
+                        <td>
+                            <button class="btn btn-secondary btn-sm" onclick="editEvent(${event.id})">Sửa</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteEvent(${event.id})">Xóa</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openAddModal() {
+            currentEditId = null;
+            document.getElementById('modalTitle').textContent = 'Tạo Đợt Hiến Máu';
+            document.getElementById('eventForm').reset();
+            document.getElementById('eventModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('eventModal').classList.remove('active');
+        }
+
+        function editEvent(id) {
+            const event = events.find(e => e.id === id);
+            if (!event) return;
+
+            currentEditId = id;
+            document.getElementById('modalTitle').textContent = 'Cập Nhật Đợt Hiến';
+            document.getElementById('eventName').value = event.name;
+            document.getElementById('eventDate').value = event.date;
+            document.getElementById('eventLocation').value = event.location;
+            document.getElementById('eventGoal').value = event.goal;
+            document.getElementById('eventActual').value = event.actual;
+            document.getElementById('eventNote').value = event.note || '';
+            document.getElementById('eventModal').classList.add('active');
+        }
+
+        function saveEvent(event) {
+            event.preventDefault();
+
+            const eventData = {
+                name: document.getElementById('eventName').value,
+                date: document.getElementById('eventDate').value,
+                location: document.getElementById('eventLocation').value,
+                goal: parseInt(document.getElementById('eventGoal').value),
+                actual: parseInt(document.getElementById('eventActual').value),
+                note: document.getElementById('eventNote').value
+            };
+
+            if (currentEditId) {
+                const eventItem = events.find(e => e.id === currentEditId);
+                Object.assign(eventItem, eventData);
+                showAlert('Cập nhật thành công!', 'success');
+            } else {
+                const newEvent = {
+                    id: Math.max(...events.map(e => e.id), 0) + 1,
+                    ...eventData,
+                    createdAt: new Date().toISOString()
+                };
+                events.push(newEvent);
+                showAlert('Tạo đợt hiến thành công!', 'success');
+            }
+
+            localStorage.setItem('events', JSON.stringify(events));
+            closeModal();
+            renderTable();
+        }
+
+        function deleteEvent(id) {
+            if (confirm('Bạn có chắc chắn muốn xóa đợt hiến này?')) {
+                events = events.filter(e => e.id !== id);
+                localStorage.setItem('events', JSON.stringify(events));
+                showAlert('Xóa thành công!', 'success');
+                renderTable();
+            }
+        }
+
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#eventTable tbody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alertBox');
+            alert.textContent = message;
+            alert.className = `alert alert-${type} active`;
+            setTimeout(() => alert.classList.remove('active'), 3000);
+        }
+
+        window.addEventListener('load', loadData);
+    </script>
+</body>
+</html>

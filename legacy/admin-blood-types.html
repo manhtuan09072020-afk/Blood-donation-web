@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Nhóm Máu</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">🩸 Hiến Máu Nhân Đạo</div>
+            <nav>
+                <a href="index.html">Trang chủ</a>
+                <a href="admin-dashboard.html">Dashboard</a>
+                <a href="admin-donors.html">Người hiến</a>
+                <a href="admin-blood-types.html">Nhóm máu</a>
+                <a href="admin-centers.html">Điểm hiến</a>
+                <a href="admin-events.html">Đợt hiến</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="page-wrapper">
+        <div class="container">
+            <div class="page-header">
+                <h1>🧬 Quản lý Nhóm Máu</h1>
+                <p>Quản lý danh mục nhóm máu (O, A, B, AB) với hệ Rh (+/-)</p>
+                <div class="breadcrumb">
+                    <a href="index.html">Trang chủ</a> > <span>Nhóm máu</span>
+                </div>
+            </div>
+
+            <div id="alertBox" class="alert"></div>
+
+            <div class="toolbar">
+                <button class="btn btn-primary" onclick="openAddModal()">+ Thêm Nhóm Máu</button>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Loại Máu</th>
+                            <th>Hệ Rh</th>
+                            <th>Mô Tả</th>
+                            <th>Người Hưởng</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">🧬</div>
+                <p>Chưa có nhóm máu. Bắt đầu bằng cách thêm nhóm máu mới.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Thêm/Sửa -->
+    <div id="bloodModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Thêm Nhóm Máu</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="bloodForm" onsubmit="saveBlood(event)">
+                <div class="form-group required">
+                    <label>Loại Máu (O, A, B, AB)</label>
+                    <select id="bloodType" required>
+                        <option value="">-- Chọn --</option>
+                        <option value="O">O</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="AB">AB</option>
+                    </select>
+                </div>
+                <div class="form-group required">
+                    <label>Hệ Rh</label>
+                    <select id="rhesus" required>
+                        <option value="">-- Chọn --</option>
+                        <option value="+">Dương tính (+)</option>
+                        <option value="-">Âm tính (-)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Mô Tả</label>
+                    <textarea id="description" placeholder="Mô tả chi tiết về nhóm máu này"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Hệ Thống Quản Lý Hiến Máu Nhân Đạo - ĐH Công Thương TP.HCM</p>
+    </footer>
+
+    <script>
+        let bloodTypes = [];
+        let currentEditId = null;
+
+        const recipients = {
+            'O+': 'O+, A+, B+, AB+',
+            'O-': 'Tất cả',
+            'A+': 'A+, AB+',
+            'A-': 'A+, A-, AB+, AB-',
+            'B+': 'B+, AB+',
+            'B-': 'B+, B-, AB+, AB-',
+            'AB+': 'AB+',
+            'AB-': 'Tất cả'
+        };
+
+        function loadData() {
+            bloodTypes = JSON.parse(localStorage.getItem('bloodTypes') || '[]');
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            if (bloodTypes.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            tbody.innerHTML = bloodTypes.map(blood => {
+                const full = blood.type + blood.rh;
+                return `
+                    <tr>
+                        <td>#${blood.id}</td>
+                        <td><strong>${blood.type}</strong></td>
+                        <td><span class="badge badge-success">${blood.rh}</span></td>
+                        <td>${blood.description}</td>
+                        <td>${recipients[full] || 'N/A'}</td>
+                        <td>
+                            <button class="btn btn-secondary btn-sm" onclick="editBlood(${blood.id})">Sửa</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteBlood(${blood.id})">Xóa</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openAddModal() {
+            currentEditId = null;
+            document.getElementById('modalTitle').textContent = 'Thêm Nhóm Máu';
+            document.getElementById('bloodForm').reset();
+            document.getElementById('bloodModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('bloodModal').classList.remove('active');
+        }
+
+        function editBlood(id) {
+            const blood = bloodTypes.find(b => b.id === id);
+            if (!blood) return;
+
+            currentEditId = id;
+            document.getElementById('modalTitle').textContent = 'Sửa Nhóm Máu';
+            document.getElementById('bloodType').value = blood.type;
+            document.getElementById('rhesus').value = blood.rh;
+            document.getElementById('description').value = blood.description;
+            document.getElementById('bloodModal').classList.add('active');
+        }
+
+        function saveBlood(event) {
+            event.preventDefault();
+
+            const type = document.getElementById('bloodType').value;
+            const rh = document.getElementById('rhesus').value;
+            const description = document.getElementById('description').value;
+
+            if (currentEditId) {
+                const blood = bloodTypes.find(b => b.id === currentEditId);
+                blood.type = type;
+                blood.rh = rh;
+                blood.description = description;
+                showAlert('Cập nhật thành công!', 'success');
+            } else {
+                const newBlood = {
+                    id: Math.max(...bloodTypes.map(b => b.id), 0) + 1,
+                    type: type,
+                    rh: rh,
+                    description: description
+                };
+                bloodTypes.push(newBlood);
+                showAlert('Thêm mới thành công!', 'success');
+            }
+
+            localStorage.setItem('bloodTypes', JSON.stringify(bloodTypes));
+            closeModal();
+            renderTable();
+        }
+
+        function deleteBlood(id) {
+            if (confirm('Bạn có chắc chắn muốn xóa nhóm máu này?')) {
+                bloodTypes = bloodTypes.filter(b => b.id !== id);
+                localStorage.setItem('bloodTypes', JSON.stringify(bloodTypes));
+                showAlert('Xóa thành công!', 'success');
+                renderTable();
+            }
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alertBox');
+            alert.textContent = message;
+            alert.className = `alert alert-${type} active`;
+            setTimeout(() => alert.classList.remove('active'), 3000);
+        }
+
+        window.addEventListener('load', loadData);
+    </script>
+</body>
+</html>

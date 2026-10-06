@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tiếp Nhận Máu</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">🩸 Hiến Máu Nhân Đạo</div>
+            <nav>
+                <a href="index.html">Trang chủ</a>
+                <a href="admin-dashboard.html">Dashboard</a>
+                <a href="admin-blood-reception.html">Tiếp nhận</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="page-wrapper">
+        <div class="container">
+            <div class="page-header">
+                <h1>📥 Tiếp Nhận Máu</h1>
+                <p>Ghi nhận mã vạch, thể tích và thời gian tiếp nhận máu</p>
+                <div class="breadcrumb">
+                    <a href="index.html">Trang chủ</a> > <span>Tiếp nhận máu</span>
+                </div>
+            </div>
+
+            <div id="alertBox" class="alert"></div>
+
+            <div class="toolbar">
+                <button class="btn btn-primary" onclick="openAddModal()">+ Tiếp Nhận Máu Mới</button>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Tìm theo mã vạch..." onkeyup="filterTable()">
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Mã Vạch</th>
+                            <th>Nhóm Máu</th>
+                            <th>Thể Tích (ml)</th>
+                            <th>Ngày Tiếp Nhận</th>
+                            <th>Nhân Viên</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">📥</div>
+                <p>Chưa có tiếp nhận máu. Bắt đầu bằng cách thêm mới.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="receptionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Tiếp Nhận Máu Mới</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="receptionForm" onsubmit="saveReception(event)">
+                <div class="form-group required">
+                    <label>Mã Vạch Túi Máu</label>
+                    <input type="text" id="barcode" required placeholder="VD: BB001">
+                </div>
+                <div class="form-group required">
+                    <label>Nhóm Máu</label>
+                    <select id="bloodType" required>
+                        <option value="">-- Chọn --</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                    </select>
+                </div>
+                <div class="form-group required">
+                    <label>Thể Tích (ml)</label>
+                    <input type="number" id="volume" required value="450" min="100">
+                </div>
+                <div class="form-group required">
+                    <label>Ngày Tiếp Nhận</label>
+                    <input type="date" id="receivedDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Nhân Viên Tiếp Nhận</label>
+                    <input type="text" id="staff" placeholder="Tên nhân viên">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Hệ Thống Quản Lý Hiến Máu Nhân Đạo - ĐH Công Thương TP.HCM</p>
+    </footer>
+
+    <script>
+        let receptions = [];
+
+        function loadData() {
+            receptions = JSON.parse(localStorage.getItem('bloodBags') || '[]');
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            if (receptions.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            tbody.innerHTML = receptions.map(r => `
+                <tr>
+                    <td>#${r.id}</td>
+                    <td><strong>${r.barcode}</strong></td>
+                    <td>${r.bloodType}</td>
+                    <td>${r.quantity} ml</td>
+                    <td>${new Date(r.received).toLocaleDateString('vi-VN')}</td>
+                    <td>${r.staff || 'N/A'}</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" onclick="deleteReception(${r.id})">Xóa</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openAddModal() {
+            document.getElementById('receptionForm').reset();
+            document.getElementById('receivedDate').valueAsDate = new Date();
+            document.getElementById('receptionModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('receptionModal').classList.remove('active');
+        }
+
+        function saveReception(event) {
+            event.preventDefault();
+
+            const newReception = {
+                id: Math.max(...receptions.map(r => r.id), 0) + 1,
+                barcode: document.getElementById('barcode').value,
+                bloodType: document.getElementById('bloodType').value,
+                quantity: parseInt(document.getElementById('volume').value),
+                received: document.getElementById('receivedDate').value,
+                staff: document.getElementById('staff').value,
+                expiry: new Date(new Date(document.getElementById('receivedDate').value).getTime() + 42*24*60*60*1000).toISOString().split('T')[0]
+            };
+
+            receptions.push(newReception);
+            localStorage.setItem('bloodBags', JSON.stringify(receptions));
+            showAlert('Tiếp nhận máu thành công!', 'success');
+            closeModal();
+            renderTable();
+        }
+
+        function deleteReception(id) {
+            if (confirm('Xóa bản ghi tiếp nhận này?')) {
+                receptions = receptions.filter(r => r.id !== id);
+                localStorage.setItem('bloodBags', JSON.stringify(receptions));
+                showAlert('Xóa thành công!', 'success');
+                renderTable();
+            }
+        }
+
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('table tbody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alertBox');
+            alert.textContent = message;
+            alert.className = `alert alert-${type} active`;
+            setTimeout(() => alert.classList.remove('active'), 3000);
+        }
+
+        window.addEventListener('load', loadData);
+    </script>
+</body>
+</html>

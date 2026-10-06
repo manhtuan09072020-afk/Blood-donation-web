@@ -1,0 +1,22 @@
+# .NET
+backend/**/bin/
+backend/**/obj/
+.vs/
+*.user
+
+# Web
+web/node_modules/
+web/dist/
+
+# Flutter (xem thêm mobile/.gitignore)
+mobile/build/
+mobile/.dart_tool/
+
+# Khác
+*.log
+.DS_Store
+Thumbs.db
+
+# Bản build web được copy vào API khi đóng gói
+backend/HienMauAPI/wwwroot/
+release/

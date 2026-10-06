@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch Sử Hiến Máu</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">🩸 Hiến Máu Nhân Đạo</div>
+            <nav>
+                <a href="index.html">Trang chủ</a>
+                <a href="admin-dashboard.html">Dashboard</a>
+                <a href="admin-history.html">Lịch sử</a>
+                <a href="admin-donors.html">Người hiến</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="page-wrapper">
+        <div class="container">
+            <div class="page-header">
+                <h1>📜 Lịch Sử Hiến Máu</h1>
+                <p>Tra cứu lịch sử hiến máu của từng người</p>
+                <div class="breadcrumb">
+                    <a href="index.html">Trang chủ</a> > <span>Lịch sử</span>
+                </div>
+            </div>
+
+            <div id="alertBox" class="alert"></div>
+
+            <div class="toolbar">
+                <button class="btn btn-primary" onclick="openAddModal()">+ Ghi Nhận Hiến Máu</button>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Tìm theo tên người hiến..." onkeyup="filterTable()">
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Người Hiến</th>
+                            <th>Ngày Hiến</th>
+                            <th>Đợt Hiến</th>
+                            <th>Thể Tích (ml)</th>
+                            <th>Kết Quả</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">📜</div>
+                <p>Chưa có lịch sử hiến máu. Bắt đầu bằng cách ghi nhận hiến máu mới.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="donationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Ghi Nhận Hiến Máu</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="donationForm" onsubmit="saveDonation(event)">
+                <div class="form-group required">
+                    <label>Người Hiến</label>
+                    <select id="donationDonor" required>
+                        <option value="">-- Chọn --</option>
+                    </select>
+                </div>
+                <div class="form-group required">
+                    <label>Đợt Hiến</label>
+                    <select id="donationEvent" required>
+                        <option value="">-- Chọn --</option>
+                    </select>
+                </div>
+                <div class="form-group required">
+                    <label>Ngày Hiến</label>
+                    <input type="date" id="donationDate" required>
+                </div>
+                <div class="form-group required">
+                    <label>Thể Tích (ml)</label>
+                    <input type="number" id="donationVolume" required value="450" min="100" max="500">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Hệ Thống Quản Lý Hiến Máu Nhân Đạo - ĐH Công Thương TP.HCM</p>
+    </footer>
+
+    <script>
+        let donations = [];
+        let donors = [];
+        let events = [];
+
+        function loadData() {
+            donors = JSON.parse(localStorage.getItem('donors') || '[]');
+            events = JSON.parse(localStorage.getItem('events') || '[]');
+            donations = JSON.parse(localStorage.getItem('donations') || '[]');
+            renderTable();
+            populateSelects();
+        }
+
+        function populateSelects() {
+            const donorSelect = document.getElementById('donationDonor');
+            const eventSelect = document.getElementById('donationEvent');
+            
+            donorSelect.innerHTML = '<option value="">-- Chọn --</option>';
+            donors.forEach(d => {
+                donorSelect.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+            });
+
+            eventSelect.innerHTML = '<option value="">-- Chọn --</option>';
+            events.forEach(e => {
+                eventSelect.innerHTML += `<option value="${e.id}">${e.name}</option>`;
+            });
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            if (donations.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            tbody.innerHTML = donations.map(d => {
+                const donor = donors.find(dn => dn.id == d.donorId);
+                const event = events.find(e => e.id == d.eventId);
+                return `
+                    <tr>
+                        <td>#${d.id}</td>
+                        <td>${donor?.name || 'N/A'}</td>
+                        <td>${new Date(d.date).toLocaleDateString('vi-VN')}</td>
+                        <td>${event?.name || 'N/A'}</td>
+                        <td>${d.quantity} ml</td>
+                        <td><span class="badge badge-success">${d.status === 'success' ? 'Thành công' : 'Khác'}</span></td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" onclick="deleteDonation(${d.id})">Xóa</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openAddModal() {
+            document.getElementById('donationForm').reset();
+            document.getElementById('donationDate').valueAsDate = new Date();
+            document.getElementById('donationModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('donationModal').classList.remove('active');
+        }
+
+        function saveDonation(event) {
+            event.preventDefault();
+
+            const newDonation = {
+                id: Math.max(...donations.map(d => d.id), 0) + 1,
+                donorId: parseInt(document.getElementById('donationDonor').value),
+                eventId: parseInt(document.getElementById('donationEvent').value),
+                date: document.getElementById('donationDate').value,
+                quantity: parseInt(document.getElementById('donationVolume').value),
+                status: 'success'
+            };
+
+            donations.push(newDonation);
+            localStorage.setItem('donations', JSON.stringify(donations));
+            showAlert('Ghi nhận hiến máu thành công!', 'success');
+            closeModal();
+            renderTable();
+        }
+
+        function deleteDonation(id) {
+            if (confirm('Xóa lịch sử hiến máu này?')) {
+                donations = donations.filter(d => d.id !== id);
+                localStorage.setItem('donations', JSON.stringify(donations));
+                showAlert('Xóa thành công!', 'success');
+                renderTable();
+            }
+        }
+
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('table tbody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alertBox');
+            alert.textContent = message;
+            alert.className = `alert alert-${type} active`;
+            setTimeout(() => alert.classList.remove('active'), 3000);
+        }
+
+        window.addEventListener('load', loadData);
+    </script>
+</body>
+</html>

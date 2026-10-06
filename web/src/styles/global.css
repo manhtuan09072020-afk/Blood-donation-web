@@ -1,0 +1,168 @@
+* { box-sizing: border-box; }
+html, body, #root { min-height: 100%; }
+body { margin: 0; background: #f4f6fb; -webkit-font-smoothing: antialiased; }
+a { text-decoration: none; }
+
+/* ===== Layout quản trị ===== */
+.admin-logo {
+  height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 22px;
+  color: #fff;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+.logo-mark {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, #ef4444, #9f1239);
+  box-shadow: 0 6px 16px rgba(200, 16, 46, 0.45);
+  flex-shrink: 0;
+}
+.admin-logo .logo-text { line-height: 1.15; overflow: hidden; white-space: nowrap; }
+.admin-logo .logo-text b { font-size: 16px; letter-spacing: 0.2px; }
+.admin-logo .logo-text small { display: block; font-size: 11px; color: #94a3b8; }
+
+.admin-header {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px !important;
+  border-bottom: 1px solid #e5e7eb;
+  height: 64px;
+}
+.admin-content { padding: 24px; min-height: calc(100vh - 64px); }
+.admin-user-chip {
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  padding: 4px 10px 4px 4px; border-radius: 999px; transition: background .2s;
+}
+.admin-user-chip:hover { background: #f1f5f9; }
+.admin-user-chip .meta { line-height: 1.2; }
+.admin-user-chip .meta b { display: block; font-size: 13px; }
+.admin-user-chip .meta span { font-size: 11px; color: #64748b; }
+
+/* ===== Trang ===== */
+.page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.page-header h1 { margin: 0; font-size: 22px; font-weight: 700; color: #0f172a; }
+.page-header p { margin: 4px 0 0; color: #64748b; }
+
+.stat-card { height: 100%; border-radius: 14px !important; overflow: hidden; }
+.stat-card .ant-card-body { padding: 18px 20px; }
+.stat-card .stat-icon {
+  width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 22px;
+}
+.stat-card .stat-value { font-size: 26px; font-weight: 700; color: #0f172a; line-height: 1.2; }
+.stat-card .stat-label { color: #64748b; font-size: 13px; }
+.stat-card .stat-foot { margin-top: 8px; font-size: 12px; color: #64748b; }
+
+.blood-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 42px; height: 26px; padding: 0 8px; border-radius: 8px;
+  font-weight: 700; font-size: 13px; color: #fff;
+  background: linear-gradient(135deg, #e11d48, #9f1239);
+}
+.blood-badge.neg { background: linear-gradient(135deg, #7c3aed, #4c1d95); }
+.blood-badge.unknown { background: #e2e8f0; color: #64748b; }
+.blood-badge.lg { min-width: 64px; height: 44px; font-size: 20px; border-radius: 12px; }
+
+.blood-tile {
+  border-radius: 14px; padding: 16px; background: #fff; border: 1px solid #eef0f4; height: 100%;
+  transition: box-shadow .2s, transform .2s;
+}
+.blood-tile:hover { box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08); transform: translateY(-2px); }
+.blood-tile.low { border-color: #fecaca; background: linear-gradient(180deg, #fff5f5, #fff); }
+
+.pipeline-step {
+  border-radius: 14px; padding: 16px 18px; background: #fff; border: 1px solid #eef0f4; cursor: pointer;
+  transition: all .2s; height: 100%;
+}
+.pipeline-step:hover { border-color: #c8102e; box-shadow: 0 8px 20px rgba(200, 16, 46, 0.08); }
+.pipeline-step .num { font-size: 28px; font-weight: 800; color: #0f172a; }
+
+.toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+
+/* ===== Trang công khai ===== */
+.public-header {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(255, 255, 255, 0.92); backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid #eef0f4;
+}
+.public-header .inner { max-width: 1200px; margin: 0 auto; height: 70px; display: flex; align-items: center; gap: 28px; padding: 0 20px; }
+.public-brand { display: flex; align-items: center; gap: 10px; color: #0f172a; }
+.public-brand b { font-size: 18px; }
+.public-brand small { display: block; font-size: 11px; color: #64748b; margin-top: -2px; }
+.public-nav { display: flex; gap: 6px; flex: 1; }
+.public-nav a { color: #334155; font-weight: 500; padding: 8px 14px; border-radius: 8px; }
+.public-nav a:hover, .public-nav a.active { color: #c8102e; background: #fdecee; }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+.section { padding: 72px 0; }
+.section-title { text-align: center; margin-bottom: 40px; }
+.section-title .eyebrow { color: #c8102e; font-weight: 700; letter-spacing: 1.5px; font-size: 12px; text-transform: uppercase; }
+.section-title h2 { font-size: 32px; margin: 8px 0; color: #0f172a; }
+.section-title p { color: #64748b; max-width: 640px; margin: 0 auto; }
+
+.hero {
+  position: relative; overflow: hidden;
+  background: radial-gradient(1200px 500px at 85% -10%, rgba(255, 255, 255, 0.18), transparent 60%),
+              linear-gradient(135deg, #9f0d24 0%, #c8102e 45%, #e11d48 100%);
+  color: #fff;
+}
+.hero .inner { max-width: 1200px; margin: 0 auto; padding: 80px 20px 110px; display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 48px; align-items: center; }
+.hero h1 { font-size: 48px; line-height: 1.12; margin: 16px 0; font-weight: 800; color: #fff; }
+.hero p.lead { font-size: 18px; opacity: 0.92; max-width: 560px; }
+.hero .pill { display: inline-flex; gap: 8px; align-items: center; background: rgba(255, 255, 255, 0.15); padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+.hero-card { background: rgba(255, 255, 255, 0.96); color: #0f172a; border-radius: 20px; padding: 24px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.25); }
+.hero-wave { position: absolute; bottom: -1px; left: 0; width: 100%; }
+
+.stats-strip { margin-top: -56px; position: relative; z-index: 2; }
+.stats-strip .ant-card { border-radius: 18px; box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08); }
+
+.campaign-card { border-radius: 16px !important; overflow: hidden; height: 100%; transition: transform .2s, box-shadow .2s; }
+.campaign-card:hover { transform: translateY(-4px); box-shadow: 0 16px 32px rgba(15, 23, 42, 0.1); }
+.campaign-card .date-box {
+  width: 64px; border-radius: 12px; text-align: center; background: #fdecee; color: #c8102e; padding: 8px 0; flex-shrink: 0;
+}
+.campaign-card .date-box b { display: block; font-size: 24px; line-height: 1; }
+.campaign-card .date-box span { font-size: 12px; font-weight: 600; }
+
+.step-card { text-align: center; padding: 28px 20px; border-radius: 16px; background: #fff; border: 1px solid #eef0f4; height: 100%; }
+.step-card .step-icon { width: 64px; height: 64px; border-radius: 18px; margin: 0 auto 16px; display: grid; place-items: center; font-size: 28px; color: #c8102e; background: #fdecee; }
+
+.public-footer { background: #0f172a; color: #cbd5e1; padding: 48px 0 24px; margin-top: 40px; }
+.public-footer h4 { color: #fff; }
+.public-footer a { color: #cbd5e1; }
+
+.auth-wrap { min-height: calc(100vh - 70px); display: grid; grid-template-columns: 1fr 1fr; }
+.auth-side {
+  background: linear-gradient(160deg, #9f0d24, #c8102e 55%, #e11d48);
+  color: #fff; padding: 64px; display: flex; flex-direction: column; justify-content: center;
+}
+.auth-side h2 { color: #fff; font-size: 34px; line-height: 1.2; }
+.auth-form { display: flex; align-items: center; justify-content: center; padding: 40px 20px; background: #fff; }
+.auth-form .box { width: 100%; max-width: 440px; }
+
+.donor-card {
+  border-radius: 20px; padding: 24px; color: #fff; position: relative; overflow: hidden;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #9f0d24 140%);
+}
+.donor-card::after {
+  content: ''; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(225, 29, 72, 0.55), transparent 70%);
+}
+
+@media (max-width: 992px) {
+  .hero .inner { grid-template-columns: 1fr; padding: 56px 20px 96px; }
+  .hero h1 { font-size: 34px; }
+  .auth-wrap { grid-template-columns: 1fr; }
+  .auth-side { display: none; }
+  .public-nav { display: none; }
+}
+
+@media print {
+  .no-print, .ant-layout-sider, .admin-header { display: none !important; }
+  .admin-content { padding: 0 !important; }
+}
+
+/* Bảng: tiêu đề cột không xuống dòng */
+.ant-table-thead > tr > th { white-space: nowrap; }

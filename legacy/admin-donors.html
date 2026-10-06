@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Người Hiến Máu</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #D32F2F;
+            --primary-dark: #B71C1C;
+            --text-dark: #1a1a1a;
+            --text-light: #666666;
+            --bg-light: #f5f5f5;
+            --bg-white: #ffffff;
+            --border-color: #e0e0e0;
+            --success: #43A047;
+            --danger: #E53935;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 20px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        nav {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: 0.3s;
+        }
+
+        nav a:hover {
+            opacity: 0.8;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .page-wrapper {
+            padding: 40px 20px;
+        }
+
+        .page-header {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .page-header h1 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .page-header p {
+            color: var(--text-light);
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .breadcrumb {
+            color: var(--text-light);
+            font-size: 13px;
+        }
+
+        .breadcrumb a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #C62828;
+        }
+
+        .table-wrapper {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table thead {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+        }
+
+        table th {
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+        }
+
+        table tbody tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .empty-state p {
+            color: var(--text-light);
+        }
+
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .modal-header h2 {
+            font-size: 18px;
+            margin: 0;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            opacity: 0.8;
+        }
+
+        form {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group.required label::after {
+            content: ' *';
+            color: red;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-dark);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.1);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .btn-cancel {
+            background-color: #999;
+            color: white;
+        }
+
+        .btn-cancel:hover {
+            background-color: #777;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert.success {
+            background-color: #E8F5E9;
+            color: #2E7D32;
+            border-left: 4px solid #43A047;
+        }
+
+        .alert.danger {
+            background-color: #FFEBEE;
+            color: #C62828;
+            border-left: 4px solid #E53935;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        footer {
+            background: #1a1a1a;
+            color: #aaa;
+            text-align: center;
+            padding: 20px;
+            font-size: 13px;
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            nav {
+                flex-direction: column;
+                gap: 10px;
+                width: 100%;
+            }
+
+            nav a {
+                display: block;
+            }
+
+            .page-header h1 {
+                font-size: 24px;
+            }
+
+            .toolbar {
+                flex-direction: column;
+            }
+
+            .search-box {
+                width: 100%;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            table th,
+            table td {
+                padding: 8px;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">🩸 Hiến Máu Nhân Đạo</div>
+            <nav>
+                <a href="index.html">Trang chủ</a>
+                <a href="admin-dashboard.html">Dashboard</a>
+                <a href="admin-donors.html">Người hiến</a>
+                <a href="admin-blood-types.html">Nhóm máu</a>
+                <a href="admin-centers.html">Điểm hiến</a>
+                <a href="admin-events.html">Đợt hiến</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="page-wrapper">
+        <div class="container">
+            <div class="page-header">
+                <h1>👥 Quản lý Người Hiến Máu</h1>
+                <p>Quản lý thông tin cá nhân, nhóm máu và lịch sử hiến máu</p>
+                <div class="breadcrumb">
+                    <a href="index.html">Trang chủ</a> > <span>Người hiến</span>
+                </div>
+            </div>
+
+            <div id="alertBox" class="alert"></div>
+
+            <div class="toolbar">
+                <button class="btn btn-primary" onclick="openAddModal()">+ Thêm Người Hiến</button>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Tìm theo tên, email hoặc phone..." onkeyup="filterTable()">
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="donorTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Họ Tên</th>
+                            <th>Email</th>
+                            <th>Điện Thoại</th>
+                            <th>Nhóm Máu</th>
+                            <th>Lần Hiến</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">📭</div>
+                <p>Chưa có dữ liệu người hiến máu. Bắt đầu bằng cách thêm một người mới.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Thêm/Sửa -->
+    <div id="donorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Thêm Người Hiến Máu</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="donorForm" onsubmit="saveDonor(event)">
+                <div class="form-group required">
+                    <label>Họ Tên</label>
+                    <input type="text" id="donorName" required>
+                </div>
+                <div class="form-group required">
+                    <label>Email</label>
+                    <input type="email" id="donorEmail" required>
+                </div>
+                <div class="form-group required">
+                    <label>Điện Thoại</label>
+                    <input type="tel" id="donorPhone" required>
+                </div>
+                <div class="form-group required">
+                    <label>Nhóm Máu</label>
+                    <select id="donorBlood" required>
+                        <option value="">-- Chọn nhóm máu --</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-cancel" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Hệ Thống Quản Lý Hiến Máu Nhân Đạo - ĐH Công Thương TP.HCM</p>
+    </footer>
+
+    <script>
+        let donors = [];
+        let editingDonorId = null;
+
+        function initData() {
+            if (!localStorage.getItem('donors')) {
+                donors = [
+                    { id: 1, name: 'Nguyễn Văn A', email: 'nguyenvana@example.com', phone: '0901234567', blood: 'O+', donations: 5, createdAt: new Date().toISOString() },
+                    { id: 2, name: 'Trần Thị B', email: 'tranthib@example.com', phone: '0912345678', blood: 'A+', donations: 3, createdAt: new Date().toISOString() }
+                ];
+                localStorage.setItem('donors', JSON.stringify(donors));
+            } else {
+                donors = JSON.parse(localStorage.getItem('donors'));
+            }
+            loadTable();
+        }
+
+        function loadTable() {
+            const tbody = document.getElementById('tableBody');
+            const emptyState = document.getElementById('emptyState');
+            
+            tbody.innerHTML = '';
+            if (donors.length === 0) {
+                emptyState.style.display = 'block';
+            } else {
+                emptyState.style.display = 'none';
+                donors.forEach(donor => {
+                    const row = `
+                        <tr>
+                            <td>#${donor.id}</td>
+                            <td>${donor.name}</td>
+                            <td>${donor.email}</td>
+                            <td>${donor.phone}</td>
+                            <td><strong>${donor.blood}</strong></td>
+                            <td>${donor.donations} lần</td>
+                            <td>
+                                <button class="btn btn-primary btn-sm" onclick="editDonor(${donor.id})">Sửa</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteDonor(${donor.id})">Xóa</button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            }
+        }
+
+        function openAddModal() {
+            editingDonorId = null;
+            document.getElementById('modalTitle').textContent = 'Thêm Người Hiến Máu';
+            document.getElementById('donorForm').reset();
+            document.getElementById('donorModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('donorModal').classList.remove('active');
+        }
+
+        function editDonor(id) {
+            const donor = donors.find(d => d.id === id);
+            if (!donor) return;
+            
+            editingDonorId = id;
+            document.getElementById('modalTitle').textContent = 'Sửa Thông Tin Người Hiến';
+            document.getElementById('donorName').value = donor.name;
+            document.getElementById('donorEmail').value = donor.email;
+            document.getElementById('donorPhone').value = donor.phone;
+            document.getElementById('donorBlood').value = donor.blood;
+            document.getElementById('donorModal').classList.add('active');
+        }
+
+        function saveDonor(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('donorName').value;
+            const email = document.getElementById('donorEmail').value;
+            const phone = document.getElementById('donorPhone').value;
+            const blood = document.getElementById('donorBlood').value;
+
+            if (editingDonorId) {
+                const donor = donors.find(d => d.id === editingDonorId);
+                if (donor) {
+                    donor.name = name;
+                    donor.email = email;
+                    donor.phone = phone;
+                    donor.blood = blood;
+                }
+                showAlert('Cập nhật người hiến thành công!', 'success');
+            } else {
+                const newDonor = {
+                    id: donors.length > 0 ? Math.max(...donors.map(d => d.id)) + 1 : 1,
+                    name, email, phone, blood,
+                    donations: 0,
+                    createdAt: new Date().toISOString()
+                };
+                donors.push(newDonor);
+                showAlert('Thêm người hiến thành công!', 'success');
+            }
+
+            localStorage.setItem('donors', JSON.stringify(donors));
+            loadTable();
+            closeModal();
+        }
+
+        function deleteDonor(id) {
+            if (confirm('Bạn chắc chắn muốn xóa người hiến này?')) {
+                donors = donors.filter(d => d.id !== id);
+                localStorage.setItem('donors', JSON.stringify(donors));
+                loadTable();
+                showAlert('Xóa người hiến thành công!', 'success');
+            }
+        }
+
+        function filterTable() {
+            const searchValue = document.getElementById('searchInput').value.toLowerCase();
+            const tbody = document.getElementById('tableBody');
+            const rows = tbody.getElementsByTagName('tr');
+
+            Array.from(rows).forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchValue) ? '' : 'none';
+            });
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alertBox');
+            alert.textContent = message;
+            alert.className = `alert ${type} show`;
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 3000);
+        }
+
+        window.addEventListener('load', initData);
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('donorModal');
+            if (e.target === modal) closeModal();
+        });
+    </script>
+</body>
+</html>

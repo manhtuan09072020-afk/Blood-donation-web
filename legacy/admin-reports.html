@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Báo Cáo & Thống Kê</title>
+    <link rel="stylesheet" href="admin-style.css">
+    <style>
+        .report-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .report-card {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            border-top: 4px solid #D32F2F;
+        }
+
+        .report-card h3 {
+            color: #D32F2F;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .report-card p {
+            color: #666;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .report-card .btn {
+            width: 100%;
+            text-align: center;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .summary-item {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .summary-value {
+            font-size: 28px;
+            color: #D32F2F;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .summary-label {
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">🩸 Hiến Máu Nhân Đạo</div>
+            <nav>
+                <a href="index.html">Trang chủ</a>
+                <a href="admin-dashboard.html">Dashboard</a>
+                <a href="admin-reports.html">Báo cáo</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="page-wrapper">
+        <div class="container">
+            <div class="page-header">
+                <h1>📊 Báo Cáo & Thống Kê</h1>
+                <p>Xem báo cáo chi tiết về hoạt động hiến máu</p>
+                <div class="breadcrumb">
+                    <a href="index.html">Trang chủ</a> > <span>Báo cáo</span>
+                </div>
+            </div>
+
+            <h2 style="margin-bottom: 20px; color: #D32F2F;">Tổng Quan</h2>
+            <div class="stats-summary">
+                <div class="summary-item">
+                    <div class="summary-value" id="total-donors">0</div>
+                    <div class="summary-label">Người Hiến Tổng</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="total-donations">0</div>
+                    <div class="summary-label">Lần Hiến Máu</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="total-ml">0</div>
+                    <div class="summary-label">Tổng (ml)</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-value" id="total-events">0</div>
+                    <div class="summary-label">Đợt Hiến</div>
+                </div>
+            </div>
+
+            <h2 style="margin: 40px 0 20px; color: #D32F2F;">Báo Cáo Chi Tiết</h2>
+            <div class="report-grid">
+                <div class="report-card">
+                    <h3>📈 Báo Cáo Người Hiến</h3>
+                    <p>Danh sách tất cả người hiến máu, số lần hiến, nhóm máu phân bố và thông tin liên hệ.</p>
+                    <button class="btn btn-primary" onclick="generateDonorsReport()">Xem Báo Cáo</button>
+                </div>
+
+                <div class="report-card">
+                    <h3>📅 Báo Cáo Đợt Hiến</h3>
+                    <p>Tổng hợp kết quả các đợt hiến máu, tiến độ thực hiện và so sánh mục tiêu.</p>
+                    <button class="btn btn-primary" onclick="generateEventsReport()">Xem Báo Cáo</button>
+                </div>
+
+                <div class="report-card">
+                    <h3>🩸 Báo Cáo Kho Máu</h3>
+                    <p>Tồn kho theo nhóm máu, hạn sử dụng, và các túi máu sắp hết hạn.</p>
+                    <button class="btn btn-primary" onclick="generateInventoryReport()">Xem Báo Cáo</button>
+                </div>
+
+                <div class="report-card">
+                    <h3>💪 Báo Cáo Hiến Máu</h3>
+                    <p>Chi tiết các lần hiến máu, thể tích, ngày tháng và trạng thái hoàn thành.</p>
+                    <button class="btn btn-primary" onclick="generateDonationsReport()">Xem Báo Cáo</button>
+                </div>
+
+                <div class="report-card">
+                    <h3>🏥 Báo Cáo Điểm Hiến</h3>
+                    <p>Danh sách điểm hiến, năng lực, và hoạt động thực tế của từng cơ sở.</p>
+                    <button class="btn btn-primary" onclick="generateCentersReport()">Xem Báo Cáo</button>
+                </div>
+
+                <div class="report-card">
+                    <h3>📊 Xuất Dữ Liệu Excel</h3>
+                    <p>Xuất toàn bộ dữ liệu sang file Excel để phân tích thêm và lưu trữ.</p>
+                    <button class="btn btn-primary" onclick="exportToExcel()">Xuất Excel</button>
+                </div>
+            </div>
+
+            <div id="reportContent" style="background: white; padding: 25px; border-radius: 8px; margin-top: 30px; display: none; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);">
+                <div style="margin-bottom: 15px;">
+                    <button class="btn btn-secondary" onclick="closeReport()" style="width: 100%;">Đóng Báo Cáo</button>
+                </div>
+                <div id="reportBody"></div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Hệ Thống Quản Lý Hiến Máu Nhân Đạo - ĐH Công Thương TP.HCM</p>
+    </footer>
+
+    <script>
+        function generateDonorsReport() {
+            const donors = JSON.parse(localStorage.getItem('donors') || '[]');
+            let html = '<h3 style="color: #D32F2F; margin-bottom: 15px;">📈 Báo Cáo Người Hiến Máu</h3>';
+            html += `<p><strong>Tổng người hiến:</strong> ${donors.length}</p>`;
+            html += '<table style="width: 100%; border-collapse: collapse; margin-top: 15px;"><thead><tr style="background: #f5f5f5;"><th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Tên</th><th style="padding: 10px; border: 1px solid #ddd;">Nhóm Máu</th><th style="padding: 10px; border: 1px solid #ddd;">Lần Hiến</th></tr></thead><tbody>';
+            donors.forEach(d => {
+                html += `<tr><td style="padding: 10px; border: 1px solid #ddd;">${d.name}</td><td style="padding: 10px; border: 1px solid #ddd;">${d.blood}</td><td style="padding: 10px; border: 1px solid #ddd;">${d.donations}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            showReport(html);
+        }
+
+        function generateEventsReport() {
+            const events = JSON.parse(localStorage.getItem('events') || '[]');
+            let html = '<h3 style="color: #D32F2F; margin-bottom: 15px;">📅 Báo Cáo Đợt Hiến Máu</h3>';
+            html += `<p><strong>Tổng đợt hiến:</strong> ${events.length}</p>`;
+            html += '<table style="width: 100%; border-collapse: collapse; margin-top: 15px;"><thead><tr style="background: #f5f5f5;"><th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Tên Đợt</th><th style="padding: 10px; border: 1px solid #ddd;">Mục Tiêu</th><th style="padding: 10px; border: 1px solid #ddd;">Thực Tế</th><th style="padding: 10px; border: 1px solid #ddd;">%</th></tr></thead><tbody>';
+            events.forEach(e => {
+                const percent = Math.round((e.actual / e.goal) * 100);
+                html += `<tr><td style="padding: 10px; border: 1px solid #ddd;">${e.name}</td><td style="padding: 10px; border: 1px solid #ddd;">${e.goal}</td><td style="padding: 10px; border: 1px solid #ddd;">${e.actual}</td><td style="padding: 10px; border: 1px solid #ddd;">${percent}%</td></tr>`;
+            });
+            html += '</tbody></table>';
+            showReport(html);
+        }
+
+        function generateInventoryReport() {
+            const bags = JSON.parse(localStorage.getItem('bloodBags') || '[]');
+            let html = '<h3 style="color: #D32F2F; margin-bottom: 15px;">🩸 Báo Cáo Kho Máu</h3>';
+            html += `<p><strong>Tổng túi máu:</strong> ${bags.length}</p>`;
+            html += '<table style="width: 100%; border-collapse: collapse; margin-top: 15px;"><thead><tr style="background: #f5f5f5;"><th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Nhóm Máu</th><th style="padding: 10px; border: 1px solid #ddd;">Số Túi</th><th style="padding: 10px; border: 1px solid #ddd;">Tổng (ml)</th></tr></thead><tbody>';
+            const byType = {};
+            bags.forEach(b => {
+                if (!byType[b.bloodType]) byType[b.bloodType] = { count: 0, volume: 0 };
+                byType[b.bloodType].count++;
+                byType[b.bloodType].volume += b.quantity;
+            });
+            Object.entries(byType).forEach(([type, data]) => {
+                html += `<tr><td style="padding: 10px; border: 1px solid #ddd;">${type}</td><td style="padding: 10px; border: 1px solid #ddd;">${data.count}</td><td style="padding: 10px; border: 1px solid #ddd;">${data.volume}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            showReport(html);
+        }
+
+        function generateDonationsReport() {
+            const donations = JSON.parse(localStorage.getItem('donations') || '[]');
+            let html = '<h3 style="color: #D32F2F; margin-bottom: 15px;">💪 Báo Cáo Hiến Máu</h3>';
+            html += `<p><strong>Tổng lần hiến:</strong> ${donations.length}</p>`;
+            html += `<p><strong>Tổng thể tích:</strong> ${donations.reduce((sum, d) => sum + d.quantity, 0)} ml</p>`;
+            showReport(html);
+        }
+
+        function generateCentersReport() {
+            const centers = JSON.parse(localStorage.getItem('centers') || '[]');
+            let html = '<h3 style="color: #D32F2F; margin-bottom: 15px;">🏥 Báo Cáo Điểm Hiến</h3>';
+            html += `<p><strong>Tổng điểm hiến:</strong> ${centers.length}</p>`;
+            html += '<table style="width: 100%; border-collapse: collapse; margin-top: 15px;"><thead><tr style="background: #f5f5f5;"><th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Tên</th><th style="padding: 10px; border: 1px solid #ddd;">Địa Chỉ</th><th style="padding: 10px; border: 1px solid #ddd;">Năng Lực</th></tr></thead><tbody>';
+            centers.forEach(c => {
+                html += `<tr><td style="padding: 10px; border: 1px solid #ddd;">${c.name}</td><td style="padding: 10px; border: 1px solid #ddd;">${c.address}</td><td style="padding: 10px; border: 1px solid #ddd;">${c.capacity}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            showReport(html);
+        }
+
+        function showReport(html) {
+            document.getElementById('reportBody').innerHTML = html;
+            document.getElementById('reportContent').style.display = 'block';
+            window.scrollTo(0, document.getElementById('reportContent').offsetTop);
+        }
+
+        function closeReport() {
+            document.getElementById('reportContent').style.display = 'none';
+        }
+
+        function exportToExcel() {
+            alert('Tính năng xuất Excel sẽ được phát triển trong phiên bản tiếp theo!');
+        }
+
+        function updateStats() {
+            const donors = JSON.parse(localStorage.getItem('donors') || '[]');
+            const donations = JSON.parse(localStorage.getItem('donations') || '[]');
+            const events = JSON.parse(localStorage.getItem('events') || '[]');
+
+            const totalMl = donations.reduce((sum, d) => sum + d.quantity, 0);
+
+            document.getElementById('total-donors').textContent = donors.length;
+            document.getElementById('total-donations').textContent = donations.length;
+            document.getElementById('total-ml').textContent = totalMl;
+            document.getElementById('total-events').textContent = events.length;
+        }
+
+        window.addEventListener('load', updateStats);
+    </script>
+</body>
+</html>

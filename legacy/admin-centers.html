@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Điểm Hiến Máu</title>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">🩸 Hiến Máu Nhân Đạo</div>
+            <nav>
+                <a href="index.html">Trang chủ</a>
+                <a href="admin-dashboard.html">Dashboard</a>
+                <a href="admin-donors.html">Người hiến</a>
+                <a href="admin-blood-types.html">Nhóm máu</a>
+                <a href="admin-centers.html">Điểm hiến</a>
+                <a href="admin-events.html">Đợt hiến</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="page-wrapper">
+        <div class="container">
+            <div class="page-header">
+                <h1>🏥 Quản lý Điểm Hiến Máu</h1>
+                <p>Quản lý cơ sở y tế, địa điểm lưu động và năng lực tiếp nhận</p>
+                <div class="breadcrumb">
+                    <a href="index.html">Trang chủ</a> > <span>Điểm hiến</span>
+                </div>
+            </div>
+
+            <div id="alertBox" class="alert"></div>
+
+            <div class="toolbar">
+                <button class="btn btn-primary" onclick="openAddModal()">+ Thêm Điểm Hiến</button>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Tìm theo tên hoặc địa chỉ..." onkeyup="filterTable()">
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="centerTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tên Cơ Sở</th>
+                            <th>Địa Chỉ</th>
+                            <th>Điện Thoại</th>
+                            <th>Năng Lực</th>
+                            <th>Loại</th>
+                            <th>Hành Động</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">🏥</div>
+                <p>Chưa có điểm hiến. Bắt đầu bằng cách thêm điểm hiến mới.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Thêm/Sửa -->
+    <div id="centerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Thêm Điểm Hiến Máu</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="centerForm" onsubmit="saveCenter(event)">
+                <div class="form-group required">
+                    <label>Tên Cơ Sở</label>
+                    <input type="text" id="centerName" required>
+                </div>
+                <div class="form-group required">
+                    <label>Địa Chỉ</label>
+                    <input type="text" id="centerAddress" required>
+                </div>
+                <div class="form-group required">
+                    <label>Điện Thoại</label>
+                    <input type="tel" id="centerPhone" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="centerEmail">
+                </div>
+                <div class="form-group required">
+                    <label>Năng Lực (người/ngày)</label>
+                    <input type="number" id="centerCapacity" required min="1">
+                </div>
+                <div class="form-group required">
+                    <label>Loại Điểm</label>
+                    <select id="centerType" required>
+                        <option value="">-- Chọn --</option>
+                        <option value="Cơ sở y tế">Cơ sở y tế</option>
+                        <option value="Lưu động">Lưu động</option>
+                        <option value="Ban máu">Ban máu</option>
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Hệ Thống Quản Lý Hiến Máu Nhân Đạo - ĐH Công Thương TP.HCM</p>
+    </footer>
+
+    <script>
+        let centers = [];
+        let currentEditId = null;
+
+        function loadData() {
+            centers = JSON.parse(localStorage.getItem('centers') || '[]');
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const emptyState = document.getElementById('emptyState');
+
+            if (centers.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            tbody.innerHTML = centers.map(center => `
+                <tr>
+                    <td>#${center.id}</td>
+                    <td><strong>${center.name}</strong></td>
+                    <td>${center.address}</td>
+                    <td>${center.phone}</td>
+                    <td>${center.capacity} người/ngày</td>
+                    <td><span class="badge badge-success">${center.type || 'N/A'}</span></td>
+                    <td>
+                        <button class="btn btn-secondary btn-sm" onclick="editCenter(${center.id})">Sửa</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteCenter(${center.id})">Xóa</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openAddModal() {
+            currentEditId = null;
+            document.getElementById('modalTitle').textContent = 'Thêm Điểm Hiến Máu';
+            document.getElementById('centerForm').reset();
+            document.getElementById('centerModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('centerModal').classList.remove('active');
+        }
+
+        function editCenter(id) {
+            const center = centers.find(c => c.id === id);
+            if (!center) return;
+
+            currentEditId = id;
+            document.getElementById('modalTitle').textContent = 'Sửa Thông Tin Điểm Hiến';
+            document.getElementById('centerName').value = center.name;
+            document.getElementById('centerAddress').value = center.address;
+            document.getElementById('centerPhone').value = center.phone;
+            document.getElementById('centerEmail').value = center.email || '';
+            document.getElementById('centerCapacity').value = center.capacity;
+            document.getElementById('centerType').value = center.type || '';
+            document.getElementById('centerModal').classList.add('active');
+        }
+
+        function saveCenter(event) {
+            event.preventDefault();
+
+            const centerData = {
+                name: document.getElementById('centerName').value,
+                address: document.getElementById('centerAddress').value,
+                phone: document.getElementById('centerPhone').value,
+                email: document.getElementById('centerEmail').value,
+                capacity: parseInt(document.getElementById('centerCapacity').value),
+                type: document.getElementById('centerType').value
+            };
+
+            if (currentEditId) {
+                const center = centers.find(c => c.id === currentEditId);
+                Object.assign(center, centerData);
+                showAlert('Cập nhật thành công!', 'success');
+            } else {
+                const newCenter = {
+                    id: Math.max(...centers.map(c => c.id), 0) + 1,
+                    ...centerData,
+                    createdAt: new Date().toISOString()
+                };
+                centers.push(newCenter);
+                showAlert('Thêm mới thành công!', 'success');
+            }
+
+            localStorage.setItem('centers', JSON.stringify(centers));
+            closeModal();
+            renderTable();
+        }
+
+        function deleteCenter(id) {
+            if (confirm('Bạn có chắc chắn muốn xóa điểm hiến này?')) {
+                centers = centers.filter(c => c.id !== id);
+                localStorage.setItem('centers', JSON.stringify(centers));
+                showAlert('Xóa thành công!', 'success');
+                renderTable();
+            }
+        }
+
+        function filterTable() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#centerTable tbody tr');
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('alertBox');
+            alert.textContent = message;
+            alert.className = `alert alert-${type} active`;
+            setTimeout(() => alert.classList.remove('active'), 3000);
+        }
+
+        window.addEventListener('load', loadData);
+    </script>
+</body>
+</html>
