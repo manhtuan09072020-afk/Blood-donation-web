@@ -34,7 +34,10 @@ if ($avast -and (Test-Path $jbr)) {
         $cer = Join-Path $env:TEMP "avast-root.cer"
         Export-Certificate -Cert $avast -FilePath $cer | Out-Null
         Copy-Item "$jbr\lib\security\cacerts" $store -Force
-        & "$jbr\bin\keytool.exe" -importcert -noprompt -alias avast-root -file $cer -keystore $store -storepass changeit 2>$null | Out-Null
+        # keytool ghi thông báo ra stderr => PowerShell 5.1 coi là lỗi nếu để "Stop"
+        $ErrorActionPreference = "Continue"
+        & "$jbr\bin\keytool.exe" -importcert -noprompt -alias avast-root -file $cer -keystore $store -storepass changeit 2>&1 | Out-Null
+        $ErrorActionPreference = "Stop"
     }
     $env:JAVA_TOOL_OPTIONS = "-Djavax.net.ssl.trustStore=$store -Djavax.net.ssl.trustStorePassword=changeit"
     Write-Host "Phát hiện Avast: đã cấu hình chứng chỉ cho Gradle." -ForegroundColor Yellow
