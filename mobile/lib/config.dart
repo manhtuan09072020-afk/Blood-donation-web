@@ -1,20 +1,16 @@
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Cấu hình địa chỉ máy chủ API.
-/// - Web / Windows: http://localhost:5000/api
-/// - Máy ảo Android: http://10.0.2.2:5000/api (10.0.2.2 trỏ về localhost của máy tính)
-/// - Điện thoại thật: nhập IP LAN của máy chạy API trong màn hình "Cấu hình máy chủ"
-///   (chạy API bằng: dotnet run --urls http://0.0.0.0:5000)
+/// Mặc định http://localhost:5000/api cho mọi nền tảng.
+/// - Android (điện thoại cắm USB hoặc máy ảo): chạy `adb reverse tcp:5000 tcp:5000`
+///   để cổng 5000 của điện thoại trỏ về máy tính đang chạy API.
+/// - Điện thoại dùng Wi-Fi không cắm cáp: nhập `http://IP-máy-tính:5000/api` trong màn hình
+///   "Cấu hình máy chủ" (chạy API bằng: dotnet run --urls http://0.0.0.0:5000).
 class AppConfig {
   static const _key = 'api_base_url';
   static String _baseUrl = defaultBaseUrl;
 
-  static String get defaultBaseUrl {
-    if (kIsWeb) return 'http://localhost:5000/api';
-    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:5000/api';
-    return 'http://localhost:5000/api';
-  }
+  static String get defaultBaseUrl => 'http://localhost:5000/api';
 
   static String get baseUrl => _baseUrl;
 

@@ -40,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           TextField(controller: ctrl, decoration: const InputDecoration(labelText: 'Địa chỉ API')),
           const SizedBox(height: 10),
-          const Text('Máy ảo Android: http://10.0.2.2:5000/api\nĐiện thoại thật: http://<IP máy tính>:5000/api',
+          const Text('Cắm cáp USB (đã chạy adb reverse): http://localhost:5000/api\nQua Wi-Fi: http://<IP máy tính>:5000/api',
               style: TextStyle(fontSize: 12, color: AppColors.muted)),
         ]),
         actions: [

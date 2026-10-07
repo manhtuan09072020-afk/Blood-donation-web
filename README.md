@@ -73,13 +73,21 @@ npm run dev        # http://localhost:5173 (đã proxy /api -> localhost:5000)
 ```
 
 ### Bước 4 — Chạy Mobile
+**Điện thoại Android thật cắm cáp USB** (khuyên dùng) — bật *Gỡ lỗi USB* trên điện thoại, API đang chạy, rồi:
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\run-mobile-android.ps1
+```
+Script tự `adb reverse tcp:5000 tcp:5000` (điện thoại gọi `http://localhost:5000/api` = API trên máy tính) và xử lý chứng chỉ Avast nếu có.
+
+Chạy thủ công:
 ```bash
+adb reverse tcp:5000 tcp:5000   # chạy lại mỗi lần cắm lại cáp
 cd mobile
 flutter pub get
-flutter run                 # máy ảo Android: API mặc định http://10.0.2.2:5000/api
-flutter run -d chrome       # chạy thử trên trình duyệt
+flutter run                     # hoặc: flutter run -d chrome (chạy thử trên trình duyệt)
 ```
-Điện thoại thật: ở màn hình đăng nhập bấm ⚙ và nhập `http://<IP-máy-tính>:5000/api`.
+Dùng Wi-Fi không cắm cáp: chạy API bằng `dotnet run --urls http://0.0.0.0:5000`, mở cổng 5000 trên tường lửa Windows,
+rồi ở màn hình đăng nhập của app bấm ⚙ và nhập `http://<IP-máy-tính>:5000/api`.
 
 ### Đóng gói triển khai (một tiến trình phục vụ cả website và API)
 ```powershell
