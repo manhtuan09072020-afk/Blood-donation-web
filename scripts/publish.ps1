@@ -9,17 +9,20 @@ $api = Join-Path $root "backend\HienMauAPI"
 $wwwroot = Join-Path $api "wwwroot"
 $out = Join-Path $root "release\HienMauAPI"
 
-Write-Host "[1/3] Build giao diện web..." -ForegroundColor Cyan
+Write-Host "[1/4] Build giao diện web..." -ForegroundColor Cyan
 Push-Location $web
 if (-not (Test-Path "node_modules")) { npm install }
 npm run build
 Pop-Location
 
-Write-Host "[2/3] Nhúng web vào API (wwwroot)..." -ForegroundColor Cyan
+Write-Host "[2/4] Nhúng web vào API (wwwroot)..." -ForegroundColor Cyan
 if (Test-Path $wwwroot) { Remove-Item $wwwroot -Recurse -Force }
 Copy-Item (Join-Path $web "dist") $wwwroot -Recurse
 
-Write-Host "[3/3] dotnet publish (Release)..." -ForegroundColor Cyan
+Write-Host "[3/4] Build app mobile bản web cho iPhone (wwwroot\app)..." -ForegroundColor Cyan
+& (Join-Path $PSScriptRoot "build-iphone-web.ps1")
+
+Write-Host "[4/4] dotnet publish (Release)..." -ForegroundColor Cyan
 dotnet publish $api -c Release -o $out
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish thất bại" }
 
@@ -27,4 +30,4 @@ Write-Host ""
 Write-Host "Hoàn tất! Chạy hệ thống:" -ForegroundColor Green
 Write-Host "  cd release\HienMauAPI" -ForegroundColor Green
 Write-Host "  .\HienMauAPI.exe --urls http://0.0.0.0:5000" -ForegroundColor Green
-Write-Host "Mở http://localhost:5000 (website) và http://localhost:5000/swagger (API)" -ForegroundColor Green
+Write-Host "Mở http://localhost:5000 (website), http://localhost:5000/app/ (app mobile bản web) và http://localhost:5000/swagger (API)" -ForegroundColor Green

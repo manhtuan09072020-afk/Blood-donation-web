@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Cấu hình địa chỉ máy chủ API.
@@ -6,11 +7,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///   để cổng 5000 của điện thoại trỏ về máy tính đang chạy API.
 /// - Điện thoại dùng Wi-Fi không cắm cáp: nhập `http://IP-máy-tính:5000/api` trong màn hình
 ///   "Cấu hình máy chủ" (chạy API bằng: dotnet run --urls http://0.0.0.0:5000).
+/// - iPhone / trình duyệt: bản web được API phục vụ tại http://IP-máy-tính:5000/app/
+///   => tự gọi API ở cùng địa chỉ, không cần cấu hình.
 class AppConfig {
   static const _key = 'api_base_url';
   static String _baseUrl = defaultBaseUrl;
 
-  static String get defaultBaseUrl => 'http://localhost:5000/api';
+  static String get defaultBaseUrl {
+    if (kIsWeb && Uri.base.path.startsWith('/app')) return '${Uri.base.origin}/api';
+    return 'http://localhost:5000/api';
+  }
 
   static String get baseUrl => _baseUrl;
 

@@ -91,6 +91,11 @@ nhấp đúp `KET_NOI_WIFI.bat` (mở cổng 5000 trên tường lửa – chỉ
 của app bấm ⚙ và nhập `http://<IP-máy-tính>:5000/api`. Nếu Wi-Fi công cộng chặn các máy nhìn thấy nhau,
 bật điểm phát sóng (hotspot) trên điện thoại và cho máy tính kết nối vào đó.
 
+**iPhone (không cần máy Mac):** chạy `scripts\build-iphone-web.ps1` để build app thành bản web và nhúng vào API,
+khởi động lại API, rồi trên iPhone (cùng Wi-Fi) mở Safari vào `http://<IP-máy-tính>:5000/app/` → nút Chia sẻ →
+**Thêm vào MH chính** để có biểu tượng như app. Bản web tự gọi API cùng địa chỉ (không cần cấu hình ⚙),
+nhưng không có thông báo đẩy ra thanh thông báo. Build app iOS gốc (`flutter run` trong `mobile`) bắt buộc dùng máy Mac + Xcode.
+
 ### Đóng gói triển khai (một tiến trình phục vụ cả website và API)
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\publish.ps1

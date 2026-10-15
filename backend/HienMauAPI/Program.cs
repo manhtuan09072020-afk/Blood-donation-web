@@ -156,12 +156,19 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 // Bản triển khai: giao diện React đã build được đặt trong wwwroot -> API phục vụ luôn website (một tiến trình duy nhất)
-var spaIndex = Path.Combine(app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot"), "index.html");
+// wwwroot/app chứa bản web của app mobile (Flutter) cho iPhone/trình duyệt điện thoại: http://<IP>:5000/app/
+var webRoot = app.Environment.WebRootPath ?? Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+var spaIndex = Path.Combine(webRoot, "index.html");
+var mobileIndex = Path.Combine(webRoot, "app", "index.html");
 var hasSpa = File.Exists(spaIndex);
-if (hasSpa)
+if (Directory.Exists(webRoot))
 {
+    var contentTypes = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+    contentTypes.Mappings[".mjs"] = "text/javascript";
+    contentTypes.Mappings[".wasm"] = "application/wasm";
+    contentTypes.Mappings[".symbols"] = "text/plain";
     app.UseDefaultFiles();
-    app.UseStaticFiles();
+    app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = contentTypes });
 }
 
 app.UseCors("AllowFrontend");
@@ -181,7 +188,8 @@ if (hasSpa)
             return;
         }
         context.Response.ContentType = "text/html; charset=utf-8";
-        await context.Response.SendFileAsync(spaIndex);
+        var isMobileApp = path.StartsWith("/app", StringComparison.OrdinalIgnoreCase) && File.Exists(mobileIndex);
+        await context.Response.SendFileAsync(isMobileApp ? mobileIndex : spaIndex);
     });
 }
 else
