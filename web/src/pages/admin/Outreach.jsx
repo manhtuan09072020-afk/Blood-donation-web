@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Alert, App, Button, Card, Col, Drawer, Form, Input, Progress, Row, Select, Space, Statistic, Switch, Table, Tabs, Tag, Typography, Descriptions
+  Alert, App, Button, Card, Col, Drawer, Empty, Form, Input, Progress, Row, Segmented, Select, Space, Spin, Statistic, Switch, Table, Tabs, Tag, Typography, Descriptions
 } from 'antd';
-import { SendOutlined, HeartFilled, CalendarOutlined, NotificationOutlined, ReloadOutlined, RobotOutlined, UserOutlined } from '@ant-design/icons';
+import {
+  SendOutlined, HeartFilled, CalendarOutlined, NotificationOutlined, ReloadOutlined, RobotOutlined, UserOutlined,
+  EnvironmentOutlined, ClockCircleOutlined, TeamOutlined, CheckCircleOutlined, HistoryOutlined, SyncOutlined
+} from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { notificationApi, campaignApi, donorApi, catalogApi } from '../../api';
 import { useAuth, ROLES } from '../../context/AuthContext';
-import { BloodBadge, NotificationTypeTag, PageHeader } from '../../components/common';
-import { fmtDateTime, fmtMl, LOAI_THONG_BAO } from '../../utils/format';
+import { BloodBadge, NotificationTypeTag, PageHeader, RegistrationStatusTag } from '../../components/common';
+import { fmtDate, fmtDateTime, fmtMl, fromNow, LOAI_THONG_BAO } from '../../utils/format';
 
 function CallForDonation({ onSent }) {
   const { message } = App.useApp();
@@ -97,12 +100,20 @@ function CallForDonation({ onSent }) {
 function Reminders({ onSent }) {
   const { message } = App.useApp();
   const { hasRole } = useAuth();
+  const isAdmin = hasRole(ROLES.QUAN_TRI);
   const [campaigns, setCampaigns] = useState([]);
+  const [preview, setPreview] = useState(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
   const [form] = Form.useForm();
   const [gForm] = Form.useForm();
   const [busy, setBusy] = useState('');
 
   useEffect(() => { campaignApi.getAll({ trangThai: 'SapDienRa,DangDienRa' }).then(setCampaigns); }, []);
+
+  const loadPreview = (id) => {
+    setLoadingPreview(true);
+    return notificationApi.reminderPreview(id).then(setPreview).catch((e) => message.error(e.message)).finally(() => setLoadingPreview(false));
+  };
 
   const onPick = (id) => {
     const c = campaigns.find((x) => x.id === id);
@@ -110,46 +121,172 @@ function Reminders({ onSent }) {
       tieuDe: `Nhắc lịch: ${c.tenDot}`,
       noiDung: `Bạn có lịch hiến máu lúc ${dayjs(c.ngayBatDau).format('HH:mm DD/MM/YYYY')} tại ${c.tenDiem} (${c.diaChi}). Hãy ăn nhẹ, ngủ đủ giấc và mang theo CCCD.`
     });
+    loadPreview(id);
   };
 
   const run = async (key, fn) => {
     setBusy(key);
-    try { const res = await fn(); message.success(res.message); onSent(); }
-    catch (e) { message.error(e.message); }
+    try { const res = await fn(); message.success(res.message); onSent(); return true; }
+    catch (e) { message.error(e.message); return false; }
     finally { setBusy(''); }
   };
 
+  const sendReminder = async () => {
+    const v = await form.validateFields();
+    if (await run('r', () => notificationApi.reminder(v))) loadPreview(v.dotId);
+  };
+
+  const soCanNhac = preview?.soCanNhac ?? 0;
+  const autoAt = preview && dayjs(preview.ngayTuDongNhac);
+
   return (
     <Row gutter={[24, 24]}>
-      <Col xs={24} lg={12}>
+      <Col xs={24} xl={isAdmin ? 15 : 24}>
         <Card size="small" title={<><CalendarOutlined /> Nhắc lịch theo đợt hiến máu</>}>
           <Form form={form} layout="vertical">
             <Form.Item name="dotId" label="Đợt hiến máu" rules={[{ required: true, message: 'Chọn đợt' }]}>
-              <Select onChange={onPick} options={campaigns.map((c) => ({ value: c.id, label: `${dayjs(c.ngayBatDau).format('DD/MM')} · ${c.tenDot} (${c.soLuongDaDangKy} đăng ký)` }))} />
+              <Select onChange={onPick} placeholder="Chọn đợt sắp diễn ra / đang diễn ra" showSearch optionFilterProp="label"
+                options={campaigns.map((c) => ({
+                  value: c.id,
+                  label: `${dayjs(c.ngayBatDau).format('DD/MM HH:mm')} · ${c.tenDot} — ${c.tenDiem} (${c.soLuongDaDangKy} đăng ký)`
+                }))} />
             </Form.Item>
-            <Form.Item name="tieuDe" label="Tiêu đề" rules={[{ required: true }]}><Input /></Form.Item>
-            <Form.Item name="noiDung" label="Nội dung" rules={[{ required: true }]}><Input.TextArea rows={3} maxLength={500} /></Form.Item>
-            <Button type="primary" icon={<SendOutlined />} loading={busy === 'r'} onClick={async () => { const v = await form.validateFields(); run('r', () => notificationApi.reminder(v)); }}>Gửi nhắc lịch</Button>
+
+            {loadingPreview && <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>}
+            {!loadingPreview && preview && (
+              <>
+                <Descriptions size="small" bordered column={1} style={{ marginBottom: 16 }} styles={{ label: { whiteSpace: 'nowrap', width: 150 } }}>
+                  <Descriptions.Item label={<><ClockCircleOutlined /> Thời gian</>}>
+                    {dayjs(preview.ngayBatDau).format('HH:mm')} – {dayjs(preview.ngayKetThuc).format('HH:mm')}, ngày {dayjs(preview.ngayBatDau).format('DD/MM/YYYY')}
+                  </Descriptions.Item>
+                  <Descriptions.Item label={<><EnvironmentOutlined /> Địa điểm</>}>
+                    <b>{preview.tenDiem}</b>{preview.diaChi && <> — {preview.diaChi}</>}
+                  </Descriptions.Item>
+                  <Descriptions.Item label={<><TeamOutlined /> Đăng ký</>}>
+                    <b>{preview.soDangKy}</b>{preview.soLuongToiDa ? ` / ${preview.soLuongToiDa} chỗ` : ''} người đăng ký · <b style={{ color: soCanNhac ? '#16a34a' : '#dc2626' }}>{soCanNhac}</b> người cần nhắc lịch
+                  </Descriptions.Item>
+                  <Descriptions.Item label={<><RobotOutlined /> Nhắc tự động</>}>
+                    {preview.daTuDongNhac
+                      ? <Tag color="green" icon={<CheckCircleOutlined />}>Hệ thống đã tự động nhắc</Tag>
+                      : autoAt.isAfter(dayjs())
+                        ? <span>Sẽ tự động nhắc lúc <b>{autoAt.format('HH:mm DD/MM/YYYY')}</b> (trước 2 ngày)</span>
+                        : <span>Đang trong 2 ngày trước đợt — hệ thống tự nhắc ở lần chạy kế tiếp nếu có người cần nhắc</span>}
+                    {preview.lanNhacGanNhat && <Typography.Text type="secondary"> · Lần nhắc gần nhất: {fmtDateTime(preview.lanNhacGanNhat)}</Typography.Text>}
+                  </Descriptions.Item>
+                </Descriptions>
+
+                <Table size="small" rowKey={(r) => `${r.nguoiHienId}-${r.trangThai}`} dataSource={preview.dangKy} pagination={{ pageSize: 5, hideOnSinglePage: true }}
+                  locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Đợt này chưa có ai đăng ký" /> }} style={{ marginBottom: 16 }}
+                  columns={[
+                    { title: 'Người đăng ký', dataIndex: 'hoTen', render: (v, r) => <><b>{v}</b><div style={{ fontSize: 12, color: '#64748b' }}>{r.soDienThoai}</div></> },
+                    { title: 'Nhóm', width: 80, render: (_, r) => <BloodBadge nhomMau={r.nhomMau} heRh={r.heRh} /> },
+                    { title: 'Trạng thái đăng ký', dataIndex: 'trangThai', width: 160, render: (v) => <RegistrationStatusTag value={v} /> },
+                    { title: 'Nhắc lịch', width: 220, render: (_, r) => (r.seNhan ? <Tag color="green">Sẽ nhận nhắc lịch</Tag> : <Typography.Text type="secondary" style={{ fontSize: 12 }}>Không nhắc: {r.lyDoKhongNhan}</Typography.Text>) }
+                  ]} />
+
+                {soCanNhac === 0 && (
+                  <Alert type="info" showIcon style={{ marginBottom: 16 }}
+                    message="Chưa có ai cần nhắc lịch trong đợt này"
+                    description="Nhắc lịch chỉ gửi cho đăng ký đang chờ duyệt hoặc đã duyệt. Người đã khám sàng lọc, đã hiến máu, bị từ chối hoặc đã hủy đăng ký không cần nhắc." />
+                )}
+              </>
+            )}
+
+            <Form.Item name="tieuDe" label="Tiêu đề" rules={[{ required: true }]}><Input maxLength={150} /></Form.Item>
+            <Form.Item name="noiDung" label="Nội dung" rules={[{ required: true }]}><Input.TextArea rows={3} maxLength={500} showCount /></Form.Item>
+            <Button type="primary" icon={<SendOutlined />} loading={busy === 'r'} disabled={!preview || soCanNhac === 0} onClick={sendReminder}>
+              {preview ? `Gửi nhắc lịch đến ${soCanNhac} người` : 'Gửi nhắc lịch'}
+            </Button>
           </Form>
-          <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 12, marginBottom: 0 }}><RobotOutlined /> Hệ thống tự động nhắc lịch trước 2 ngày cho mọi đợt hiến máu.</Typography.Paragraph>
         </Card>
       </Col>
-      <Col xs={24} lg={12}>
-        <Card size="small" title={<><ReloadOutlined /> Nhắc hiến máu định kỳ</>}>
-          <Typography.Paragraph>Gửi lời mời đến những người đã hiến máu đủ <b>12 tuần</b> trước và chưa được nhắc, kèm thông tin đợt hiến máu gần nhất.</Typography.Paragraph>
-          <Button icon={<SendOutlined />} loading={busy === 'p'} onClick={() => run('p', notificationApi.periodicReminder)}>Gửi nhắc định kỳ ngay</Button>
-        </Card>
-        {hasRole(ROLES.QUAN_TRI) && (
-          <Card size="small" title={<><NotificationOutlined /> Thông báo chung đến tất cả người hiến</>} style={{ marginTop: 16 }}>
+      {isAdmin && (
+        <Col xs={24} xl={9}>
+          <Card size="small" title={<><NotificationOutlined /> Thông báo chung đến tất cả người hiến</>}>
             <Form form={gForm} layout="vertical">
-              <Form.Item name="tieuDe" label="Tiêu đề" rules={[{ required: true }]}><Input /></Form.Item>
-              <Form.Item name="noiDung" label="Nội dung" rules={[{ required: true }]}><Input.TextArea rows={3} maxLength={500} /></Form.Item>
-              <Button icon={<SendOutlined />} loading={busy === 'g'} onClick={async () => { const v = await gForm.validateFields(); run('g', () => notificationApi.general(v)); gForm.resetFields(); }}>Gửi thông báo</Button>
+              <Form.Item name="tieuDe" label="Tiêu đề" rules={[{ required: true }]}><Input maxLength={150} placeholder="vd: Lịch nghỉ lễ của điểm hiến máu" /></Form.Item>
+              <Form.Item name="noiDung" label="Nội dung" rules={[{ required: true }]}><Input.TextArea rows={4} maxLength={500} showCount /></Form.Item>
+              <Button icon={<SendOutlined />} loading={busy === 'g'} onClick={async () => { const v = await gForm.validateFields(); if (await run('g', () => notificationApi.general(v))) gForm.resetFields(); }}>Gửi thông báo</Button>
             </Form>
           </Card>
-        )}
-      </Col>
+        </Col>
+      )}
     </Row>
+  );
+}
+
+const DINH_KY_STATUS = {
+  ChoGui: { label: 'Chờ gửi ở lần chạy tới', color: 'orange' },
+  DaNhac: { label: 'Đã nhắc', color: 'green' },
+  DangCoDangKy: { label: 'Đã đăng ký đợt mới', color: 'blue' }
+};
+
+// Nhắc hiến máu định kỳ: chạy hoàn toàn tự động, trang này chỉ để theo dõi
+function PeriodicReminders() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('TatCa');
+
+  const load = () => { setLoading(true); notificationApi.periodicStatus().then(setData).finally(() => setLoading(false)); };
+  useEffect(load, []);
+
+  if (!data) return <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div>;
+  const rows = filter === 'TatCa' ? data.nguoiDenHan : data.nguoiDenHan.filter((d) => d.trangThai === filter);
+  const tuan = Math.round(data.soNgayGiua2LanHien / 7);
+
+  return (
+    <>
+      <Alert type={data.tuDongBat ? 'info' : 'warning'} showIcon icon={<RobotOutlined />} style={{ marginBottom: 16 }}
+        message={data.tuDongBat ? 'Nhắc hiến máu định kỳ đang chạy tự động' : 'Tác vụ tự động đang tắt (Automation:Enabled = false)'}
+        description={<>
+          Cứ mỗi <b>{data.chuKyPhut} phút</b>, hệ thống tìm người đã hiến máu đủ <b>{tuan} tuần ({data.soNgayGiua2LanHien} ngày)</b> và gửi lời mời hiến lại,
+          kèm thông tin đợt hiến máu gần nhất. Mỗi người chỉ được nhắc <b>1 lần</b> sau mỗi lần hiến; người đã đăng ký đợt sắp tới sẽ không bị làm phiền.
+        </>}
+        action={<Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Làm mới</Button>} />
+
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={12} md={6}><Card size="small"><Statistic title="Đến hạn hiến lại" value={data.soDenHan} prefix={<TeamOutlined />} /></Card></Col>
+        <Col xs={12} md={6}><Card size="small"><Statistic title="Đã được nhắc" value={data.soDaNhac} valueStyle={{ color: '#16a34a' }} prefix={<CheckCircleOutlined />} /></Card></Col>
+        <Col xs={12} md={6}><Card size="small"><Statistic title="Chờ gửi lần chạy tới" value={data.soChoGui} valueStyle={{ color: '#d97706' }} prefix={<ClockCircleOutlined />} /></Card></Col>
+        <Col xs={12} md={6}><Card size="small"><Statistic title="Đã đăng ký đợt mới" value={data.soDangCoDangKy} valueStyle={{ color: '#2563eb' }} prefix={<CalendarOutlined />} /></Card></Col>
+      </Row>
+
+      <Descriptions size="small" bordered column={{ xs: 1, md: 3 }} style={{ marginBottom: 16 }} styles={{ label: { whiteSpace: 'nowrap' } }}>
+        <Descriptions.Item label={<><HistoryOutlined /> Lần chạy gần nhất</>}>{data.lanChayGanNhat ? `${fmtDateTime(data.lanChayGanNhat)} (${fromNow(data.lanChayGanNhat)})` : 'Chưa chạy'}</Descriptions.Item>
+        <Descriptions.Item label={<><SyncOutlined /> Lần chạy tiếp theo</>}>{data.lanChayTiepTheo ? fmtDateTime(data.lanChayTiepTheo) : '—'}</Descriptions.Item>
+        <Descriptions.Item label={<><CalendarOutlined /> Đợt được giới thiệu</>}>{data.dotGioiThieu || <Typography.Text type="secondary">Chưa có đợt sắp tới</Typography.Text>}</Descriptions.Item>
+      </Descriptions>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} xl={16}>
+          <Card size="small" title="Người hiến đã đến hạn hiến lại"
+            extra={<Segmented size="small" value={filter} onChange={setFilter} options={[{ value: 'TatCa', label: 'Tất cả' }, ...Object.entries(DINH_KY_STATUS).map(([k, s]) => ({ value: k, label: s.label }))]} />}>
+            <Table size="small" rowKey="nguoiHienId" loading={loading} dataSource={rows} pagination={{ pageSize: 8 }} scroll={{ x: 720 }}
+              locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có người hiến nào đến hạn" /> }}
+              columns={[
+                { title: 'Người hiến', dataIndex: 'hoTen', render: (v, r) => <><b>{v}</b><div style={{ fontSize: 12, color: '#64748b' }}>{r.soDienThoai}</div></> },
+                { title: 'Nhóm', width: 80, render: (_, r) => <BloodBadge nhomMau={r.nhomMau} heRh={r.heRh} /> },
+                { title: 'Hiến gần nhất', dataIndex: 'lanHienCuoi', width: 120, render: fmtDate },
+                { title: 'Đủ điều kiện từ', dataIndex: 'ngayDuDieuKien', width: 130, render: fmtDate },
+                { title: 'Tình trạng nhắc', width: 210, render: (_, r) => <><Tag color={DINH_KY_STATUS[r.trangThai]?.color}>{DINH_KY_STATUS[r.trangThai]?.label}</Tag>{r.ngayNhac && <div style={{ fontSize: 12, color: '#64748b' }}>{fmtDateTime(r.ngayNhac)}</div>}</> }
+              ]} />
+          </Card>
+        </Col>
+        <Col xs={24} xl={8}>
+          <Card size="small" title="Các lần gửi tự động gần đây">
+            {data.lichSu.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Chưa có lần gửi nào" /> : data.lichSu.map((c) => (
+              <div key={c.id} style={{ padding: '8px 0', borderBottom: '1px dashed #e2e8f0' }}>
+                <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                  <span><RobotOutlined style={{ color: '#7c3aed' }} /> {fmtDateTime(c.ngayGui)}</span>
+                  <b>{c.soNguoiNhan} người</b>
+                </Space>
+                <Progress percent={c.soNguoiNhan ? Math.round((c.soDaDoc / c.soNguoiNhan) * 100) : 0} size="small" format={(p) => `${p}% đã đọc`} />
+              </div>
+            ))}
+          </Card>
+        </Col>
+      </Row>
+    </>
   );
 }
 
@@ -221,6 +358,7 @@ export default function Outreach() {
         <Tabs activeKey={tab} onChange={setTab} items={[
           { key: 'call', label: <span><HeartFilled style={{ color: '#c8102e' }} /> Kêu gọi hiến máu</span>, children: <CallForDonation onSent={sent} /> },
           { key: 'remind', label: <span><CalendarOutlined /> Nhắc lịch & thông báo</span>, children: <Reminders onSent={sent} /> },
+          { key: 'periodic', label: <span><SyncOutlined /> Nhắc hiến định kỳ</span>, children: <PeriodicReminders /> },
           { key: 'history', label: 'Lịch sử chiến dịch', children: <History reloadKey={reloadKey} /> }
         ]} />
       </Card>

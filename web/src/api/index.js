@@ -62,7 +62,8 @@ export const inventoryApi = {
   issue: (data) => client.post('/inventory/issue', data),
   getIssues: (params) => client.get('/inventory/issues', { params }),
   getIssue: (id) => client.get(`/inventory/issues/${id}`),
-  discard: (id) => client.put(`/inventory/units/${id}/discard`),
+  discard: (id, lyDo) => client.put(`/inventory/units/${id}/discard`, { lyDo }),
+  discardExpired: () => client.post('/inventory/units/discard-expired'),
   updateLocation: (id, viTriLuuTru) => client.put(`/inventory/units/${id}/location`, { viTriLuuTru })
 };
 
@@ -82,7 +83,8 @@ export const notificationApi = {
   markAllRead: () => client.put('/notifications/me/read-all'),
   callForDonation: (data) => client.post('/notifications/call-for-donation', data),
   reminder: (data) => client.post('/notifications/reminder', data),
-  periodicReminder: () => client.post('/notifications/periodic-reminder'),
+  reminderPreview: (dotId) => client.get(`/notifications/reminder-preview/${dotId}`),
+  periodicStatus: () => client.get('/notifications/periodic-status'),
   general: (data) => client.post('/notifications/general', data),
   getCampaigns: (params) => client.get('/notifications/campaigns', { params }),
   getCampaign: (id) => client.get(`/notifications/campaigns/${id}`)

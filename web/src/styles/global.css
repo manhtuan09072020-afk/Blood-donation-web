@@ -166,3 +166,9 @@ a { text-decoration: none; }
 
 /* Bảng: tiêu đề cột không xuống dòng */
 .ant-table-thead > tr > th { white-space: nowrap; }
+
+/* Kho máu: tô màu dòng đơn vị đã hết hạn / sắp hết hạn */
+.ant-table-tbody > tr.row-expired > td { background: #fff1f2; }
+.ant-table-tbody > tr.row-expiring > td { background: #fffbeb; }
+.ant-table-tbody > tr.row-expired:hover > td { background: #ffe4e6 !important; }
+.ant-table-tbody > tr.row-expiring:hover > td { background: #fef3c7 !important; }

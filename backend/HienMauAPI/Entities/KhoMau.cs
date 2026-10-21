@@ -33,6 +33,13 @@ namespace HienMauAPI.Entities
         [MaxLength(20)]
         public string TrangThai { get; set; } = TrangThaiKhoMau.ConKho;
 
+        // Thông tin hủy bỏ (khi TrangThai = HuyBo): lý do, thời điểm, nhân viên thực hiện
+        [MaxLength(255)]
+        public string? LyDoHuy { get; set; }
+        public DateTime? NgayHuy { get; set; }
+        public int? NhanVienHuyId { get; set; }
+        public NhanVien? NhanVienHuy { get; set; }
+
         public ICollection<ChiTietXuatKho> ChiTietXuatKhos { get; set; } = new List<ChiTietXuatKho>();
     }
 }

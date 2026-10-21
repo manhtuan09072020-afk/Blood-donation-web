@@ -140,7 +140,7 @@ Phân quyền được kiểm tra hai lớp: **API** (`[Authorize(Roles = ...)]`
 | Mục | Nội dung |
 |---|---|
 | Tác nhân | NV kho, NV tiếp nhận, Quản trị viên; Hệ thống (tự động) |
-| Luồng chính | Chọn loại (kêu gọi theo nhóm máu / nhắc lịch theo đợt / nhắc định kỳ / thông báo chung) → nhập nội dung → hệ thống lọc người nhận phù hợp → tạo `ChienDichVanDong` + `ThongBao` cho từng người |
+| Luồng chính | Chọn loại (kêu gọi theo nhóm máu / nhắc lịch theo đợt / thông báo chung) → nhập nội dung → hệ thống lọc người nhận phù hợp (nhắc lịch: xem trước danh sách, chỉ gửi đăng ký chờ duyệt / đã duyệt) → tạo `ChienDichVanDong` + `ThongBao` cho từng người. Nhắc hiến định kỳ (đủ 12 tuần) chạy hoàn toàn tự động, nhân viên chỉ theo dõi ở tab riêng |
 | Tự động (60 phút/lần) | Nhắc lịch trước 2 ngày; nhắc người đã đủ 12 tuần (không nhắc lặp); nhóm máu dưới ngưỡng → kêu gọi người cùng nhóm đã đủ điều kiện (tối đa 1 lần/3 ngày/nhóm) |
 | Kết quả | Mobile nhận thông báo hệ thống; quản lý xem lịch sử chiến dịch và tỷ lệ đã đọc |
 

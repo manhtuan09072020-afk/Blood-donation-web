@@ -143,12 +143,56 @@ namespace HienMauAPI.Tests
             var unit = TestDb.AddBloodUnit(db, staffId, donorId, dotId);
             var service = new InventoryService(db);
 
-            var (ok, _) = await service.DiscardAsync(unit.Id);
+            var (ok, _) = await service.DiscardAsync(unit.Id, staffId, "Túi máu bị vỡ");
             var (issued, _, _) = await service.IssueAsync(staffId, Request((unit.Id, 100m)));
 
             Assert.True(ok);
             Assert.False(issued);
-            Assert.Equal(TrangThaiKhoMau.HuyBo, (await db.KhoMaus.SingleAsync()).TrangThai);
+            var saved = await db.KhoMaus.SingleAsync();
+            Assert.Equal(TrangThaiKhoMau.HuyBo, saved.TrangThai);
+            Assert.Equal("Túi máu bị vỡ", saved.LyDoHuy);
+            Assert.Equal(staffId, saved.NhanVienHuyId);
+            Assert.NotNull(saved.NgayHuy);
+        }
+
+        [Fact]
+        public async Task Discard_RequiresReason_AndRejectsIssuedUnits()
+        {
+            using var db = TestDb.Create();
+            var (staffId, donorId, dotId) = TestDb.SeedBasics(db);
+            var unit = TestDb.AddBloodUnit(db, staffId, donorId, dotId);
+            var issued = TestDb.AddBloodUnit(db, staffId, donorId, dotId, trangThai: TrangThaiKhoMau.DaXuat);
+            var service = new InventoryService(db);
+
+            var (noReason, _) = await service.DiscardAsync(unit.Id, staffId, "  ");
+            var (issuedUnit, _) = await service.DiscardAsync(issued.Id, staffId, "Hỏng");
+
+            Assert.False(noReason);
+            Assert.False(issuedUnit);
+            Assert.Equal(TrangThaiKhoMau.ConKho, (await db.KhoMaus.SingleAsync(k => k.Id == unit.Id)).TrangThai);
+        }
+
+        [Fact]
+        public async Task DiscardExpired_RemovesOnlyExpiredUnits_WithReason()
+        {
+            using var db = TestDb.Create();
+            var (staffId, donorId, dotId) = TestDb.SeedBasics(db);
+            var expired1 = TestDb.AddBloodUnit(db, staffId, donorId, dotId, soLuong: 250m, hanSuDungSauNgay: -1);
+            var expired2 = TestDb.AddBloodUnit(db, staffId, donorId, dotId, soLuong: 200m, hanSuDungSauNgay: -5);
+            var fresh = TestDb.AddBloodUnit(db, staffId, donorId, dotId, hanSuDungSauNgay: 3);
+            var service = new InventoryService(db);
+
+            var result = await service.DiscardExpiredAsync(staffId);
+
+            Assert.Equal(2, result.SoLo);
+            Assert.Equal(450m, result.TongSoLuong);
+            foreach (var id in new[] { expired1.Id, expired2.Id })
+            {
+                var u = await db.KhoMaus.SingleAsync(k => k.Id == id);
+                Assert.Equal(TrangThaiKhoMau.HuyBo, u.TrangThai);
+                Assert.Equal(InventoryService.LyDoHetHan, u.LyDoHuy);
+            }
+            Assert.Equal(TrangThaiKhoMau.ConKho, (await db.KhoMaus.SingleAsync(k => k.Id == fresh.Id)).TrangThai);
         }
 
         [Fact]

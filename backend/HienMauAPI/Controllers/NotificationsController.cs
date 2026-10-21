@@ -79,14 +79,19 @@ namespace HienMauAPI.Controllers
             return Ok(data);
         }
 
-        [HttpPost("periodic-reminder")]
+        // Xem trước danh sách sẽ nhận nhắc lịch của một đợt (ai nhận, ai không và vì sao)
+        [HttpGet("reminder-preview/{dotId:int}")]
         [Authorize(Roles = SenderRoles)]
-        public async Task<IActionResult> SendPeriodicReminder()
+        public async Task<IActionResult> GetReminderPreview(int dotId)
         {
-            var (success, error, data) = await _notificationService.SendPeriodicReminderAsync(User.GetProfileId());
-            if (!success) return BadRequest(new { message = error });
-            return Ok(data);
+            var preview = await _notificationService.GetReminderPreviewAsync(dotId);
+            return preview == null ? NotFound(new { message = "Không tìm thấy đợt hiến máu." }) : Ok(preview);
         }
+
+        // Nhắc hiến máu định kỳ chạy hoàn toàn tự động (AutomationBackgroundService); API này chỉ để theo dõi
+        [HttpGet("periodic-status")]
+        [Authorize(Roles = SenderRoles)]
+        public async Task<IActionResult> GetPeriodicStatus() => Ok(await _notificationService.GetPeriodicStatusAsync());
 
         [HttpPost("general")]
         [Authorize(Roles = RoleNames.QuanTri)]

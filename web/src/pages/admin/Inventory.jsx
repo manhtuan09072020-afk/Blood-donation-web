@@ -1,18 +1,98 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { App, Button, Card, Col, Input, Modal, Popconfirm, Progress, Row, Select, Space, Table, Tabs, Tag, Tooltip, Typography, Alert, List } from 'antd';
-import { SearchOutlined, EnvironmentOutlined, DeleteOutlined, ExportOutlined, DownloadOutlined, WarningOutlined, NotificationOutlined } from '@ant-design/icons';
+import { App, Badge, Button, Card, Col, Descriptions, Form, Input, Modal, Popconfirm, Progress, Row, Segmented, Select, Space, Table, Tabs, Tag, Tooltip, Typography, Alert, List } from 'antd';
+import { SearchOutlined, EnvironmentOutlined, DeleteOutlined, ExportOutlined, DownloadOutlined, WarningOutlined, NotificationOutlined, StopOutlined, ClearOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { inventoryApi, catalogApi } from '../../api';
 import { useAuth, ROLES } from '../../context/AuthContext';
 import { BloodBadge, PageHeader, UnitStatusTag } from '../../components/common';
-import { fmtDate, fmtMl, THANH_PHAN, NHOM_MAU_OPTIONS, RH_OPTIONS, KHO_STATUS, bloodLabel, thanhPhanLabel } from '../../utils/format';
+import { fmtDate, fmtDateTime, fmtMl, THANH_PHAN, NHOM_MAU_OPTIONS, RH_OPTIONS, KHO_STATUS, bloodLabel, thanhPhanLabel } from '../../utils/format';
 import { exportCsv } from '../../utils/exportCsv';
 
+const SO_NGAY_CANH_BAO = 7;
+const LY_DO_HUY = [
+  'Hết hạn sử dụng',
+  'Sắp hết hạn, không kịp sử dụng',
+  'Túi máu bị vỡ / rò rỉ',
+  'Nhiễm khuẩn / màu sắc bất thường',
+  'Không đạt xét nghiệm bệnh lây truyền qua đường máu',
+  'Bảo quản sai nhiệt độ',
+  'Khác'
+];
+
+const isExpired = (u) => u.trangThai === 'HetHan';
+const isExpiring = (u, days = SO_NGAY_CANH_BAO) => u.trangThai === 'ConKho' && u.soNgayConLai <= days;
+
 function ExpiryTag({ u }) {
+  if (isExpired(u)) return <Space direction="vertical" size={0}><span>{fmtDate(u.hanSuDung)}</span><Tag color="red" bordered={false}>quá hạn {Math.abs(u.soNgayConLai)} ngày</Tag></Space>;
   if (u.trangThai !== 'ConKho') return <span style={{ color: '#94a3b8' }}>{fmtDate(u.hanSuDung)}</span>;
-  const color = u.soNgayConLai <= 2 ? 'red' : u.soNgayConLai <= 7 ? 'orange' : 'green';
-  return <Space direction="vertical" size={0}><span>{fmtDate(u.hanSuDung)}</span><Tag color={color} bordered={false}>còn {u.soNgayConLai} ngày</Tag></Space>;
+  const color = u.soNgayConLai <= 2 ? 'red' : u.soNgayConLai <= SO_NGAY_CANH_BAO ? 'orange' : 'green';
+  return <Space direction="vertical" size={0}><span>{fmtDate(u.hanSuDung)}</span><Tag color={color} bordered={false}>{u.soNgayConLai === 0 ? 'hết hạn hôm nay' : `còn ${u.soNgayConLai} ngày`}</Tag></Space>;
+}
+
+function StatusCell({ u }) {
+  if (u.trangThai !== 'HuyBo' || !u.lyDoHuy) return <UnitStatusTag value={u.trangThai} />;
+  return (
+    <Tooltip title={<>Lý do: {u.lyDoHuy}<br />Thời gian: {fmtDateTime(u.ngayHuy)}{u.nguoiHuy && <><br />Người hủy: {u.nguoiHuy}</>}</>}>
+      <Space direction="vertical" size={0}>
+        <UnitStatusTag value={u.trangThai} />
+        <Typography.Text type="secondary" style={{ fontSize: 12 }} ellipsis>{u.lyDoHuy}</Typography.Text>
+      </Space>
+    </Tooltip>
+  );
+}
+
+// Phiếu hủy bỏ đơn vị máu: chọn lý do (bắt buộc), ghi lại người hủy và thời điểm
+function DiscardModal({ unit, onClose, onDone }) {
+  const { message } = App.useApp();
+  const [form] = Form.useForm();
+  const [saving, setSaving] = useState(false);
+  const lyDo = Form.useWatch('lyDo', form);
+
+  useEffect(() => {
+    if (unit) form.setFieldsValue({
+      lyDo: isExpired(unit) ? LY_DO_HUY[0] : isExpiring(unit) ? LY_DO_HUY[1] : undefined,
+      ghiChu: ''
+    });
+  }, [unit, form]);
+
+  const submit = async () => {
+    const v = await form.validateFields();
+    const text = v.lyDo === 'Khác' ? v.ghiChu.trim() : [v.lyDo, v.ghiChu?.trim()].filter(Boolean).join(' – ');
+    setSaving(true);
+    try { const res = await inventoryApi.discard(unit.id, text); message.success(res.message); onDone(); }
+    catch (e) { message.error(e.message); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Modal open={!!unit} onCancel={onClose} onOk={submit} confirmLoading={saving} destroyOnHidden
+      title={<><StopOutlined style={{ color: '#dc2626' }} /> {unit && isExpired(unit) ? 'Loại bỏ đơn vị máu hết hạn' : 'Hủy bỏ đơn vị máu'}</>}
+      okText="Xác nhận hủy" okButtonProps={{ danger: true }} cancelText="Đóng">
+      {unit && (
+        <>
+          <Descriptions size="small" column={2} bordered style={{ marginBottom: 16 }} styles={{ label: { whiteSpace: 'nowrap' } }}>
+            <Descriptions.Item label="Mã đơn vị" span={2}><b>{unit.maLoMau}</b></Descriptions.Item>
+            <Descriptions.Item label="Nhóm máu"><BloodBadge nhomMau={unit.nhomMau} heRh={unit.heRh} /></Descriptions.Item>
+            <Descriptions.Item label="Thành phần">{thanhPhanLabel(unit.thanhPhanMau)}</Descriptions.Item>
+            <Descriptions.Item label="Số lượng">{fmtMl(unit.soLuong)}</Descriptions.Item>
+            <Descriptions.Item label="Hạn sử dụng"><ExpiryTag u={unit} /></Descriptions.Item>
+            <Descriptions.Item label="Vị trí" span={2}>{unit.viTriLuuTru || 'Chưa xếp'}</Descriptions.Item>
+          </Descriptions>
+          <Form form={form} layout="vertical">
+            <Form.Item name="lyDo" label="Lý do hủy" rules={[{ required: true, message: 'Chọn lý do hủy' }]}>
+              <Select options={LY_DO_HUY.map((x) => ({ value: x, label: x }))} placeholder="Chọn lý do" />
+            </Form.Item>
+            <Form.Item name="ghiChu" label={lyDo === 'Khác' ? 'Mô tả lý do' : 'Ghi chú thêm (không bắt buộc)'}
+              rules={lyDo === 'Khác' ? [{ required: true, whitespace: true, message: 'Nhập lý do cụ thể' }] : []}>
+              <Input.TextArea rows={2} maxLength={150} showCount placeholder="vd: phát hiện khi kiểm kho sáng 21/10" />
+            </Form.Item>
+          </Form>
+          <Alert type="warning" showIcon message="Đơn vị máu sau khi hủy sẽ không thể xuất kho. Hệ thống lưu lại lý do, thời điểm và nhân viên thực hiện." />
+        </>
+      )}
+    </Modal>
+  );
 }
 
 export default function Inventory() {
@@ -28,32 +108,44 @@ export default function Inventory() {
   const [summary, setSummary] = useState([]);
   const [alerts, setAlerts] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [f, setF] = useState({ nhomMau: undefined, heRh: undefined, thanhPhan: undefined, trangThai: 'ConKho', keyword: '' });
+  // view: ConKho | CanXuLy (sắp hết hạn + đã hết hạn) | DaXuat | HuyBo | TatCa
+  const [f, setF] = useState({ nhomMau: undefined, heRh: undefined, thanhPhan: undefined, view: params.get('view') || 'ConKho', keyword: '' });
   const [locUnit, setLocUnit] = useState(null);
   const [locValue, setLocValue] = useState('');
+  const [discardUnit, setDiscardUnit] = useState(null);
+  const [expired, setExpired] = useState([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const soNgayCanhBao = alerts?.soNgayCanhBao ?? SO_NGAY_CANH_BAO;
 
   const loadUnits = () => {
     setLoading(true);
-    inventoryApi.getUnits({ nhomMau: f.nhomMau, heRh: f.heRh, thanhPhan: f.thanhPhan, trangThai: f.trangThai })
-      .then(setUnits).finally(() => setLoading(false));
+    const trangThai = ['ConKho', 'DaXuat', 'HuyBo'].includes(f.view) ? f.view : undefined;
+    inventoryApi.getUnits({ nhomMau: f.nhomMau, heRh: f.heRh, thanhPhan: f.thanhPhan, trangThai })
+      .then((list) => setUnits(f.view === 'CanXuLy' ? list.filter((u) => isExpired(u) || isExpiring(u, soNgayCanhBao)) : list))
+      .finally(() => setLoading(false));
   };
   const loadMeta = () => {
     catalogApi.getBloodGroups().then(setGroups);
     inventoryApi.getSummary().then(setSummary);
     inventoryApi.getAlerts().then(setAlerts);
+    inventoryApi.getUnits({ trangThai: 'HetHan' }).then(setExpired);
   };
-  useEffect(loadUnits, [f.nhomMau, f.heRh, f.thanhPhan, f.trangThai]);
+  const reloadAll = () => { loadUnits(); loadMeta(); };
+  useEffect(loadUnits, [f.nhomMau, f.heRh, f.thanhPhan, f.view, soNgayCanhBao]);
   useEffect(loadMeta, []);
 
   const shown = useMemo(() => {
     const kw = f.keyword.trim().toLowerCase();
     return kw ? units.filter((u) => `${u.maLoMau} ${u.viTriLuuTru || ''} ${u.hoTenNguoiHien || ''}`.toLowerCase().includes(kw)) : units;
   }, [units, f.keyword]);
-  const totalMl = shown.filter((u) => u.trangThai === 'ConKho').reduce((a, u) => a + Number(u.soLuong), 0);
+  const totalMl = shown.reduce((a, u) => a + Number(u.soLuong), 0);
+  const canXuLyCount = expired.length + (alerts?.loSapHetHan.length || 0);
 
-  const discard = async (u) => {
-    try { const res = await inventoryApi.discard(u.id); message.success(res.message); loadUnits(); loadMeta(); }
+  const discardAllExpired = async () => {
+    setBulkBusy(true);
+    try { const res = await inventoryApi.discardExpired(); message.success(res.message); reloadAll(); }
     catch (e) { message.error(e.message); }
+    finally { setBulkBusy(false); }
   };
   const saveLocation = async () => {
     try { const res = await inventoryApi.updateLocation(locUnit.id, locValue); message.success(res.message); setLocUnit(null); loadUnits(); }
@@ -80,18 +172,36 @@ export default function Inventory() {
     { title: 'Ngày nhập', dataIndex: 'ngayNhap', width: 120, render: fmtDate, sorter: (a, b) => dayjs(a.ngayNhap) - dayjs(b.ngayNhap) },
     { title: 'Hạn sử dụng', dataIndex: 'hanSuDung', width: 140, render: (_, u) => <ExpiryTag u={u} />, sorter: (a, b) => dayjs(a.hanSuDung) - dayjs(b.hanSuDung), defaultSortOrder: 'ascend' },
     { title: 'Vị trí lưu trữ', dataIndex: 'viTriLuuTru', width: 230, render: (v) => v ? <span><EnvironmentOutlined /> {v}</span> : <Typography.Text type="secondary">Chưa xếp</Typography.Text> },
-    { title: 'Trạng thái', dataIndex: 'trangThai', width: 130, render: (v) => <UnitStatusTag value={v} /> },
+    { title: 'Trạng thái', dataIndex: 'trangThai', width: 150, render: (_, u) => <StatusCell u={u} /> },
     {
-      title: '', width: 100, fixed: 'right', render: (_, u) => canManage && u.trangThai === 'ConKho' && (
-        <Space>
-          <Tooltip title="Đổi vị trí lưu trữ"><Button size="small" icon={<EnvironmentOutlined />} onClick={() => { setLocUnit(u); setLocValue(u.viTriLuuTru || ''); }} /></Tooltip>
-          <Popconfirm title="Hủy bỏ đơn vị máu này?" description="Dùng khi túi máu hỏng, nhiễm khuẩn, không đạt xét nghiệm." okText="Hủy bỏ" okButtonProps={{ danger: true }} onConfirm={() => discard(u)}>
-            <Tooltip title="Hủy bỏ"><Button size="small" danger icon={<DeleteOutlined />} /></Tooltip>
-          </Popconfirm>
-        </Space>
-      )
+      title: 'Thao tác', key: 'actions', width: 170, fixed: 'right', render: (_, u) => {
+        if (!canManage) return null;
+        // Đã hết hạn: không thể xuất -> loại bỏ khỏi kho
+        if (isExpired(u)) return <Button size="small" type="primary" danger icon={<StopOutlined />} onClick={() => setDiscardUnit(u)}>Loại bỏ</Button>;
+        if (u.trangThai !== 'ConKho') return null;
+        const expiring = isExpiring(u, soNgayCanhBao);
+        return (
+          <Space size={6}>
+            <Tooltip title="Đổi vị trí lưu trữ"><Button size="small" icon={<EnvironmentOutlined />} onClick={() => { setLocUnit(u); setLocValue(u.viTriLuuTru || ''); }} /></Tooltip>
+            {expiring
+              ? <Tooltip title="Sắp hết hạn: ưu tiên xuất trước, hoặc hủy nếu không kịp sử dụng"><Button size="small" danger icon={<DeleteOutlined />} onClick={() => setDiscardUnit(u)}>Hủy bỏ</Button></Tooltip>
+              : <Tooltip title="Hủy bỏ (túi vỡ, nhiễm khuẩn, không đạt xét nghiệm…)"><Button size="small" danger type="text" icon={<DeleteOutlined />} onClick={() => setDiscardUnit(u)} /></Tooltip>}
+          </Space>
+        );
+      }
     }
   ];
+
+  const alertColumns = unitColumns
+    .filter((c) => ['maLoMau', 'thanhPhanMau', 'soLuong', 'hanSuDung', 'viTriLuuTru'].includes(c.dataIndex) || c.title === 'Nhóm máu' || c.key === 'actions')
+    .map(({ fixed, ...c }) => (c.dataIndex === 'viTriLuuTru' ? { ...c, width: 190 } : c));
+
+  const bulkButton = canManage && expired.length > 0 && (
+    <Popconfirm title={`Loại bỏ ${expired.length} đơn vị máu đã hết hạn?`} description={`Tổng ${fmtMl(expired.reduce((a, u) => a + Number(u.soLuong), 0))}, lý do: Hết hạn sử dụng.`}
+      okText="Loại bỏ tất cả" okButtonProps={{ danger: true }} cancelText="Đóng" onConfirm={discardAllExpired}>
+      <Button danger icon={<ClearOutlined />} loading={bulkBusy}>Loại bỏ tất cả {expired.length} đơn vị hết hạn</Button>
+    </Popconfirm>
+  );
 
   return (
     <>
@@ -133,22 +243,35 @@ export default function Inventory() {
             key: 'units', label: 'Đơn vị máu',
             children: (
               <>
+                <div className="toolbar" style={{ justifyContent: 'space-between' }}>
+                  <Segmented value={f.view} onChange={(v) => setF({ ...f, view: v })} options={[
+                    { value: 'ConKho', label: 'Còn trong kho' },
+                    { value: 'CanXuLy', label: <span>Cần xử lý <Badge count={canXuLyCount} size="small" style={{ marginLeft: 4 }} /></span> },
+                    { value: 'DaXuat', label: 'Đã xuất' },
+                    { value: 'HuyBo', label: 'Đã hủy' },
+                    { value: 'TatCa', label: 'Tất cả' }
+                  ]} />
+                  {f.view === 'CanXuLy' && bulkButton}
+                </div>
+                {f.view === 'CanXuLy' && (
+                  <Alert type="warning" showIcon style={{ marginBottom: 12 }}
+                    message={`Đơn vị đã hết hạn (${expired.length}) phải loại bỏ khỏi kho; đơn vị sắp hết hạn trong ≤ ${soNgayCanhBao} ngày (${alerts?.loSapHetHan.length || 0}) nên ưu tiên xuất trước, hoặc hủy nếu không kịp sử dụng.`} />
+                )}
                 <div className="toolbar">
                   <Input allowClear prefix={<SearchOutlined />} placeholder="Mã đơn vị, vị trí, người hiến" style={{ width: 240 }} value={f.keyword} onChange={(e) => setF({ ...f, keyword: e.target.value })} />
                   <Select allowClear placeholder="Nhóm máu" style={{ width: 120 }} options={NHOM_MAU_OPTIONS} value={f.nhomMau} onChange={(v) => setF({ ...f, nhomMau: v })} />
                   <Select allowClear placeholder="Rh" style={{ width: 120 }} options={RH_OPTIONS} value={f.heRh} onChange={(v) => setF({ ...f, heRh: v })} />
                   <Select allowClear placeholder="Thành phần" style={{ width: 160 }} value={f.thanhPhan} onChange={(v) => setF({ ...f, thanhPhan: v })}
                     options={Object.entries(THANH_PHAN).map(([k, t]) => ({ value: k, label: t.label }))} />
-                  <Select allowClear placeholder="Trạng thái" style={{ width: 150 }} value={f.trangThai} onChange={(v) => setF({ ...f, trangThai: v })}
-                    options={Object.entries(KHO_STATUS).map(([k, s]) => ({ value: k, label: s.label }))} />
-                  <Typography.Text type="secondary">{shown.length} đơn vị · tồn {fmtMl(totalMl)}</Typography.Text>
+                  <Typography.Text type="secondary">{shown.length} đơn vị · {f.view === 'ConKho' ? 'tồn' : 'tổng'} {fmtMl(totalMl)}</Typography.Text>
                 </div>
-                <Table rowKey="id" loading={loading} dataSource={shown} columns={unitColumns} scroll={{ x: 1320 }} pagination={{ pageSize: 12, showSizeChanger: true }} />
+                <Table rowKey="id" loading={loading} dataSource={shown} columns={unitColumns} scroll={{ x: 1400 }} pagination={{ pageSize: 12, showSizeChanger: true }}
+                  rowClassName={(u) => (isExpired(u) ? 'row-expired' : isExpiring(u, soNgayCanhBao) ? 'row-expiring' : '')} />
               </>
             )
           },
           {
-            key: 'alerts', label: <span>Cảnh báo {alerts && <Tag color="red" style={{ marginLeft: 4 }}>{alerts.nhomMauThieu.length + alerts.loSapHetHan.length}</Tag>}</span>,
+            key: 'alerts', label: <span>Cảnh báo {alerts && <Tag color="red" style={{ marginLeft: 4 }}>{alerts.nhomMauThieu.length + alerts.loSapHetHan.length + expired.length}</Tag>}</span>,
             children: alerts && (
               <Row gutter={[16, 16]}>
                 <Col xs={24} lg={9}>
@@ -165,9 +288,14 @@ export default function Inventory() {
                   </Card>
                 </Col>
                 <Col xs={24} lg={15}>
-                  <Card size="small" title={`Đơn vị máu sắp hết hạn (≤ ${alerts.soNgayCanhBao} ngày) — ưu tiên xuất trước`}>
-                    <Table rowKey="id" size="small" dataSource={alerts.loSapHetHan} pagination={{ pageSize: 8 }}
-                      columns={unitColumns.filter((c) => ['maLoMau', 'thanhPhanMau', 'soLuong', 'hanSuDung', 'viTriLuuTru'].includes(c.dataIndex) || c.title === 'Nhóm máu')} />
+                  {expired.length > 0 && (
+                    <Card size="small" style={{ marginBottom: 16, borderColor: '#fecaca' }} extra={bulkButton}
+                      title={<><StopOutlined style={{ color: '#dc2626' }} /> Đơn vị máu đã hết hạn — cần loại bỏ ({expired.length})</>}>
+                      <Table rowKey="id" size="small" dataSource={expired} pagination={{ pageSize: 5 }} scroll={{ x: 980 }} columns={alertColumns} />
+                    </Card>
+                  )}
+                  <Card size="small" title={`Đơn vị máu sắp hết hạn (≤ ${alerts.soNgayCanhBao} ngày) — ưu tiên xuất trước hoặc hủy nếu không kịp dùng`}>
+                    <Table rowKey="id" size="small" dataSource={alerts.loSapHetHan} pagination={{ pageSize: 8 }} scroll={{ x: 980 }} columns={alertColumns} />
                   </Card>
                 </Col>
               </Row>
@@ -197,6 +325,8 @@ export default function Inventory() {
           }
         ]} />
       </Card>
+
+      <DiscardModal unit={discardUnit} onClose={() => setDiscardUnit(null)} onDone={() => { setDiscardUnit(null); reloadAll(); }} />
 
       <Modal title={`Vị trí lưu trữ — ${locUnit?.maLoMau}`} open={!!locUnit} onCancel={() => setLocUnit(null)} onOk={saveLocation} okText="Lưu" cancelText="Hủy">
         <Input value={locValue} onChange={(e) => setLocValue(e.target.value)} placeholder="vd: Tủ lạnh O+ / Ngăn 3" maxLength={50} />

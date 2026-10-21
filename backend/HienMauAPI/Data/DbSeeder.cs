@@ -21,6 +21,17 @@ namespace HienMauAPI.Data
                 return;
             }
 
+            // 0. Nâng cấp CSDL đã tạo từ phiên bản cũ của script (thêm cột mới, không mất dữ liệu)
+            if (db.Database.IsSqlServer())
+            {
+                await db.Database.ExecuteSqlRawAsync(@"
+IF COL_LENGTH('KhoMau', 'LyDoHuy') IS NULL
+    ALTER TABLE KhoMau ADD
+        LyDoHuy NVARCHAR(255) NULL,
+        NgayHuy DATETIME NULL,
+        NhanVienHuyId INT NULL CONSTRAINT FK_KhoMau_NhanVienHuy REFERENCES NhanVien(Id);");
+            }
+
             // 1. Thay mật khẩu giả bằng mật khẩu mặc định đã băm
             var placeholders = await db.TaiKhoans.Where(a => a.PasswordHash == Placeholder).ToListAsync();
             foreach (var account in placeholders)

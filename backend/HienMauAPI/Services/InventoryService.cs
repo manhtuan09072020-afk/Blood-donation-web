@@ -16,7 +16,8 @@ namespace HienMauAPI.Services
         Task<(bool success, string? error, PhieuXuatKhoDto? data)> IssueAsync(int nhanVienId, IssueRequestDto request);
         Task<List<PhieuXuatKhoDto>> GetIssuesAsync(DateTime? tuNgay, DateTime? denNgay, int? coSoYTeId);
         Task<PhieuXuatKhoDto?> GetIssueByIdAsync(int id);
-        Task<(bool success, string? error)> DiscardAsync(int khoMauId);
+        Task<(bool success, string? error)> DiscardAsync(int khoMauId, int? nhanVienId, string lyDo);
+        Task<DiscardResultDto> DiscardExpiredAsync(int? nhanVienId);
         Task<(bool success, string? error)> UpdateLocationAsync(int khoMauId, string viTri);
         Task MarkExpiredUnitsAsync(); // chạy mỗi lần load để cập nhật trạng thái hết hạn
     }
@@ -63,7 +64,10 @@ namespace HienMauAPI.Services
                 HanSuDung = k.HanSuDung,
                 ViTriLuuTru = k.ViTriLuuTru,
                 TrangThai = k.TrangThai,
-                HoTenNguoiHien = k.TiepNhanMau!.KhamSangLoc!.DangKyHienMau!.NguoiHienMau!.HoTen
+                HoTenNguoiHien = k.TiepNhanMau!.KhamSangLoc!.DangKyHienMau!.NguoiHienMau!.HoTen,
+                LyDoHuy = k.LyDoHuy,
+                NgayHuy = k.NgayHuy,
+                NguoiHuy = k.NhanVienHuy != null ? k.NhanVienHuy.HoTen : null
             });
 
         public async Task<List<BloodUnitDto>> GetUnitsAsync(string? nhomMau, string? trangThai, bool? sapHetHan,
@@ -324,17 +328,48 @@ namespace HienMauAPI.Services
             return p;
         }
 
-        // Hủy bỏ lô máu không dùng được (vỡ túi, nhiễm khuẩn, không đạt xét nghiệm...). Chỉ áp dụng cho lô còn trong kho.
-        public async Task<(bool success, string? error)> DiscardAsync(int khoMauId)
+        public const string LyDoHetHan = "Hết hạn sử dụng";
+
+        // Hủy bỏ lô máu không dùng được: đã hết hạn, sắp hết hạn không kịp sử dụng, vỡ túi, nhiễm khuẩn...
+        // Áp dụng cho lô còn trong kho hoặc đã hết hạn; lưu lại lý do, thời điểm và nhân viên thực hiện.
+        public async Task<(bool success, string? error)> DiscardAsync(int khoMauId, int? nhanVienId, string lyDo)
         {
+            if (string.IsNullOrWhiteSpace(lyDo)) return (false, "Vui lòng nhập lý do hủy.");
+
             var unit = await _db.KhoMaus.FindAsync(khoMauId);
             if (unit == null) return (false, "Không tìm thấy lô máu.");
-            if (unit.TrangThai != TrangThaiKhoMau.ConKho)
-                return (false, $"Lô máu {unit.MaLoMau} không ở trạng thái còn trong kho nên không thể hủy bỏ.");
+            if (unit.TrangThai != TrangThaiKhoMau.ConKho && unit.TrangThai != TrangThaiKhoMau.HetHan)
+                return (false, $"Lô máu {unit.MaLoMau} đã xuất kho hoặc đã hủy trước đó nên không thể hủy bỏ.");
 
-            unit.TrangThai = TrangThaiKhoMau.HuyBo;
+            MarkDiscarded(unit, nhanVienId, lyDo.Trim());
             await _db.SaveChangesAsync();
             return (true, null);
+        }
+
+        // Loại bỏ đồng loạt mọi lô đã hết hạn còn nằm trong kho
+        public async Task<DiscardResultDto> DiscardExpiredAsync(int? nhanVienId)
+        {
+            await MarkExpiredUnitsAsync();
+            var expired = await _db.KhoMaus.Where(k => k.TrangThai == TrangThaiKhoMau.HetHan).ToListAsync();
+            foreach (var unit in expired) MarkDiscarded(unit, nhanVienId, LyDoHetHan);
+            await _db.SaveChangesAsync();
+
+            return new DiscardResultDto
+            {
+                SoLo = expired.Count,
+                TongSoLuong = expired.Sum(u => u.SoLuong),
+                Message = expired.Count == 0
+                    ? "Không có đơn vị máu hết hạn nào cần loại bỏ."
+                    : $"Đã loại bỏ {expired.Count} đơn vị máu hết hạn ({expired.Sum(u => u.SoLuong):0} ml)."
+            };
+        }
+
+        private static void MarkDiscarded(KhoMau unit, int? nhanVienId, string lyDo)
+        {
+            unit.TrangThai = TrangThaiKhoMau.HuyBo;
+            unit.LyDoHuy = lyDo.Length > 255 ? lyDo[..255] : lyDo;
+            unit.NgayHuy = DateTime.Now;
+            unit.NhanVienHuyId = nhanVienId;
         }
 
         public async Task<(bool success, string? error)> UpdateLocationAsync(int khoMauId, string viTri)

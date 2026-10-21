@@ -219,9 +219,9 @@ mobile/lib/
 | Người hiến máu | `GET/POST /api/donors`, `GET /api/donors/{id}/history`, `PUT /api/donors/{id}`, `PUT /api/donors/{id}/active`, `GET/PUT /api/donors/me`, `GET /api/donors/me/history` |
 | Đăng ký | `GET /api/registrations`, `GET /api/registrations/me`, `POST /api/registrations`, `POST /api/registrations/walk-in`, `PUT .../{id}/status`, `PUT .../{id}/cancel` |
 | Sàng lọc / tiếp nhận | `GET/POST /api/screening`, `GET /api/collection`, `GET /api/collection/pending`, `POST /api/collection` |
-| Kho máu | `GET /api/inventory/units`, `/summary`, `/alerts`, `/suggest`, `POST /api/inventory/issue`, `GET /api/inventory/issues`, `PUT .../units/{id}/discard`, `PUT .../units/{id}/location` |
+| Kho máu | `GET /api/inventory/units`, `/summary`, `/alerts`, `/suggest`, `POST /api/inventory/issue`, `GET /api/inventory/issues`, `PUT .../units/{id}/discard` (kèm lý do), `POST .../units/discard-expired`, `PUT .../units/{id}/location` |
 | Danh mục | `GET/PUT /api/blood-groups`, `GET/POST/PUT /api/facilities` |
-| Thông báo | `GET /api/notifications/me`, `/me/unread-count`, `PUT /{id}/read`, `PUT /me/read-all`, `POST /call-for-donation`, `/reminder`, `/periodic-reminder`, `/general`, `GET /campaigns` |
+| Thông báo | `GET /api/notifications/me`, `/me/unread-count`, `PUT /{id}/read`, `PUT /me/read-all`, `POST /call-for-donation`, `/reminder`, `/general`, `GET /reminder-preview/{dotId}`, `/periodic-status` (nhắc định kỳ chạy tự động), `/campaigns` |
 | Báo cáo | `GET /api/reports/dashboard`, `/blood-type-stats`, `/monthly-stats`, `/donors`, `/campaigns`, `/issues`, `/inventory`, `/public` |
 | Nhân viên | `GET/POST /api/staff`, `PUT /api/staff/{id}`, `PUT /{id}/active`, `PUT /{id}/reset-password` |
 

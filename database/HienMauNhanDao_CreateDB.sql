@@ -187,7 +187,12 @@ CREATE TABLE KhoMau (
     ViTriLuuTru         NVARCHAR(50)    NULL,
     TrangThai           NVARCHAR(20)    NOT NULL DEFAULT (N'ConKho')
                             CONSTRAINT CK_KhoMau_TrangThai
-                            CHECK (TrangThai IN (N'ConKho', N'DaXuat', N'HetHan', N'HuyBo'))
+                            CHECK (TrangThai IN (N'ConKho', N'DaXuat', N'HetHan', N'HuyBo')),
+    -- Thông tin hủy bỏ (khi TrangThai = HuyBo)
+    LyDoHuy             NVARCHAR(255)   NULL,
+    NgayHuy             DATETIME        NULL,
+    NhanVienHuyId       INT             NULL
+                            CONSTRAINT FK_KhoMau_NhanVienHuy REFERENCES NhanVien(Id)
 );
 GO
 CREATE INDEX IX_KhoMau_NhomMau_Rh ON KhoMau(NhomMau, HeRh, TrangThai);

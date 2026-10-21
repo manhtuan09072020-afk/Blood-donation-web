@@ -26,12 +26,18 @@ namespace HienMauAPI.Services
             }
 
             var interval = TimeSpan.FromMinutes(Math.Max(1, _config.GetValue("Automation:IntervalMinutes", 60)));
+            AutomationStatus.Enabled = true;
+            AutomationStatus.IntervalMinutes = (int)interval.TotalMinutes;
 
             // Chờ API khởi động xong (seed dữ liệu) rồi mới chạy lần đầu
-            try { await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken); } catch (TaskCanceledException) { return; }
+            var firstRun = TimeSpan.FromSeconds(15);
+            AutomationStatus.NextRun = DateTime.Now.Add(firstRun);
+            try { await Task.Delay(firstRun, stoppingToken); } catch (TaskCanceledException) { return; }
 
             while (!stoppingToken.IsCancellationRequested)
             {
+                AutomationStatus.LastRun = DateTime.Now;
+                AutomationStatus.NextRun = DateTime.Now.Add(interval);
                 try
                 {
                     using var scope = _scopeFactory.CreateScope();

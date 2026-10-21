@@ -62,12 +62,17 @@ namespace HienMauAPI.Controllers
 
         [HttpPut("units/{id:int}/discard")]
         [Authorize(Roles = KhoRoles)]
-        public async Task<IActionResult> Discard(int id)
+        public async Task<IActionResult> Discard(int id, [FromBody] DiscardUnitRequest request)
         {
-            var (success, error) = await _inventoryService.DiscardAsync(id);
+            var (success, error) = await _inventoryService.DiscardAsync(id, User.GetProfileId(), request.LyDo);
             if (!success) return BadRequest(new { message = error });
-            return Ok(new { message = "Đã hủy bỏ lô máu." });
+            return Ok(new { message = "Đã hủy bỏ đơn vị máu." });
         }
+
+        [HttpPost("units/discard-expired")]
+        [Authorize(Roles = KhoRoles)]
+        public async Task<IActionResult> DiscardExpired()
+            => Ok(await _inventoryService.DiscardExpiredAsync(User.GetProfileId()));
 
         [HttpPut("units/{id:int}/location")]
         [Authorize(Roles = KhoRoles)]

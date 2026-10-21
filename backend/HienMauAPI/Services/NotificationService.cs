@@ -18,6 +18,9 @@ namespace HienMauAPI.Services
         Task<(bool success, string? error, SendResultDto? data)> SendGeneralAsync(int? nhanVienId, SendGeneralRequest request);
         Task<(bool success, string? error, SendResultDto? data)> SendPeriodicReminderAsync(int? nhanVienId, bool tuDong = false);
 
+        Task<ReminderPreviewDto?> GetReminderPreviewAsync(int dotId);
+        Task<PeriodicStatusDto> GetPeriodicStatusAsync();
+
         Task<List<OutreachCampaignDto>> GetCampaignsAsync(string? loai);
         Task<OutreachDetailDto?> GetCampaignDetailAsync(int id);
 
@@ -133,18 +136,79 @@ namespace HienMauAPI.Services
             return (true, null, result);
         }
 
+        // Chỉ nhắc người còn phải đến điểm hiến (đăng ký chờ duyệt / đã duyệt).
+        // Người đã khám sàng lọc, đã hiến, bị từ chối hoặc đã hủy thì không cần nhắc lịch nữa.
+        private static readonly string[] TrangThaiCanNhac = { TrangThaiDangKy.ChoDuyet, TrangThaiDangKy.DaDuyet };
+
+        private static string? LyDoKhongNhac(string trangThai) => trangThai switch
+        {
+            TrangThaiDangKy.ChoDuyet or TrangThaiDangKy.DaDuyet => null,
+            TrangThaiDangKy.DaSangLoc => "Đã khám sàng lọc tại điểm hiến",
+            TrangThaiDangKy.DaHienMau => "Đã hiến máu",
+            TrangThaiDangKy.TuChoi => "Đăng ký bị từ chối / không đạt",
+            TrangThaiDangKy.Huy => "Người hiến đã hủy đăng ký",
+            _ => "Không thuộc diện nhắc lịch"
+        };
+
+        public async Task<ReminderPreviewDto?> GetReminderPreviewAsync(int dotId)
+        {
+            var dot = await _db.DotHienMaus.Include(d => d.DiemHienMau).FirstOrDefaultAsync(d => d.Id == dotId);
+            if (dot == null) return null;
+
+            var dangKy = await _db.DangKyHienMaus
+                .Where(r => r.DotId == dotId)
+                .OrderBy(r => r.NguoiHienMau!.HoTen)
+                .Select(r => new ReminderRecipientDto
+                {
+                    NguoiHienId = r.NguoiHienId,
+                    HoTen = r.NguoiHienMau!.HoTen,
+                    SoDienThoai = r.NguoiHienMau!.SoDienThoai,
+                    NhomMau = r.NguoiHienMau!.NhomMau,
+                    HeRh = r.NguoiHienMau!.HeRh,
+                    TrangThai = r.TrangThai
+                }).ToListAsync();
+            foreach (var r in dangKy)
+            {
+                r.LyDoKhongNhan = LyDoKhongNhac(r.TrangThai);
+                r.SeNhan = r.LyDoKhongNhan == null;
+            }
+
+            var nhac = await _db.ChienDichVanDongs
+                .Where(c => c.DotId == dotId && c.Loai == LoaiThongBao.NhacLich && c.TieuDe != TieuDeNhacDinhKy)
+                .Select(c => new { c.NgayGui, c.TuDong }).ToListAsync();
+
+            return new ReminderPreviewDto
+            {
+                DotId = dot.Id,
+                TenDot = dot.TenDot,
+                NgayBatDau = dot.NgayBatDau,
+                NgayKetThuc = dot.NgayKetThuc,
+                TenDiem = dot.DiemHienMau?.TenDiem,
+                DiaChi = dot.DiemHienMau?.DiaChi,
+                SoLuongToiDa = dot.SoLuongDuKien ?? 0,
+                SoDangKy = dangKy.Count(r => r.TrangThai != TrangThaiDangKy.Huy && r.TrangThai != TrangThaiDangKy.TuChoi),
+                SoCanNhac = dangKy.Where(r => r.SeNhan).Select(r => r.NguoiHienId).Distinct().Count(),
+                NgayTuDongNhac = dot.NgayBatDau.AddDays(-2),
+                DaTuDongNhac = nhac.Any(c => c.TuDong),
+                LanNhacGanNhat = nhac.Count == 0 ? null : nhac.Max(c => c.NgayGui),
+                DangKy = dangKy
+            };
+        }
+
         public async Task<(bool success, string? error, SendResultDto? data)> SendReminderAsync(int? nhanVienId, SendReminderRequest request, bool tuDong = false)
         {
             var dot = await _db.DotHienMaus.FindAsync(request.DotId);
             if (dot == null) return (false, "Không tìm thấy đợt hiến máu.", null);
 
             var recipients = await _db.DangKyHienMaus
-                .Where(r => r.DotId == request.DotId && (r.TrangThai == TrangThaiDangKy.ChoDuyet || r.TrangThai == TrangThaiDangKy.DaDuyet))
+                .Where(r => r.DotId == request.DotId && TrangThaiCanNhac.Contains(r.TrangThai))
                 .Select(r => r.NguoiHienId)
                 .Distinct()
                 .ToListAsync();
 
-            if (recipients.Count == 0) return (false, "Không có người đăng ký nào cần nhắc lịch trong đợt này.", null);
+            if (recipients.Count == 0)
+                return (false, "Đợt này chưa có đăng ký nào đang chờ duyệt hoặc đã duyệt để nhắc lịch " +
+                               "(người đã khám sàng lọc, đã hiến hoặc đã hủy thì không cần nhắc).", null);
 
             var result = await CreateCampaignAsync(new ChienDichVanDong
             {
@@ -173,8 +237,15 @@ namespace HienMauAPI.Services
             return (true, null, result);
         }
 
-        // Nhắc lịch hiến máu định kỳ: người đã hiến đủ 12 tuần trước và chưa được nhắc kể từ lần hiến đó
-        public async Task<(bool success, string? error, SendResultDto? data)> SendPeriodicReminderAsync(int? nhanVienId, bool tuDong = false)
+        public const string DinhKyDaNhac = "DaNhac";
+        public const string DinhKyDangCoDangKy = "DangCoDangKy";
+        public const string DinhKyChoGui = "ChoGui";
+
+        // Người đã hiến đủ 12 tuần (đến hạn hiến lại) kèm tình trạng nhắc:
+        //  - DaNhac: đã được nhắc sau lần hiến gần nhất (không nhắc lại)
+        //  - DangCoDangKy: đã có đăng ký còn hiệu lực cho đợt sắp tới (không cần nhắc)
+        //  - ChoGui: sẽ được nhắc ở lần chạy tự động tiếp theo
+        private async Task<List<PeriodicDonorDto>> GetDueDonorsAsync()
         {
             var cutoff = DateTime.Now.Date.AddDays(-DonationRules.SoNgayToiThieuGiua2LanHien);
 
@@ -182,14 +253,15 @@ namespace HienMauAPI.Services
                 .GroupBy(t => t.KhamSangLoc!.DangKyHienMau!.NguoiHienId)
                 .Select(g => new { NguoiHienId = g.Key, LanCuoi = g.Max(t => t.NgayLayMau) })
                 .ToListAsync();
+            var candidates = lastDonations.Where(x => x.LanCuoi <= cutoff).ToDictionary(x => x.NguoiHienId, x => x.LanCuoi);
+            if (candidates.Count == 0) return new();
 
-            var candidates = lastDonations.Where(x => x.LanCuoi <= cutoff).ToList();
-            if (candidates.Count == 0) return (false, "Hiện chưa có người hiến nào đến hạn hiến máu lại.", null);
+            var ids = candidates.Keys.ToList();
+            var donors = await _db.NguoiHienMaus
+                .Where(d => d.TrangThai && ids.Contains(d.Id))
+                .Select(d => new { d.Id, d.HoTen, d.SoDienThoai, d.NhomMau, d.HeRh })
+                .ToListAsync();
 
-            var ids = candidates.Select(c => c.NguoiHienId).ToList();
-            var activeIds = (await _db.NguoiHienMaus.Where(d => d.TrangThai && ids.Contains(d.Id)).Select(d => d.Id).ToListAsync()).ToHashSet();
-
-            // Đã nhắc sau lần hiến gần nhất thì không nhắc lại; người đang có đăng ký còn hiệu lực cũng bỏ qua
             var reminded = await _db.ThongBaos
                 .Where(t => ids.Contains(t.NguoiNhanId) && t.Loai == LoaiThongBao.NhacLich && t.TieuDe == TieuDeNhacDinhKy)
                 .GroupBy(t => t.NguoiNhanId)
@@ -197,22 +269,67 @@ namespace HienMauAPI.Services
                 .ToDictionaryAsync(x => x.Id, x => x.Lan);
             var today = DateTime.Now.Date;
             var dangDangKy = (await _db.DangKyHienMaus
-                .Where(r => ids.Contains(r.NguoiHienId) && (r.TrangThai == TrangThaiDangKy.ChoDuyet || r.TrangThai == TrangThaiDangKy.DaDuyet)
-                    && r.DotHienMau!.NgayKetThuc >= today)
+                .Where(r => ids.Contains(r.NguoiHienId) && TrangThaiCanNhac.Contains(r.TrangThai) && r.DotHienMau!.NgayKetThuc >= today)
                 .Select(r => r.NguoiHienId).ToListAsync()).ToHashSet();
 
-            var recipients = candidates
-                .Where(c => activeIds.Contains(c.NguoiHienId) && !dangDangKy.Contains(c.NguoiHienId)
-                    && (!reminded.TryGetValue(c.NguoiHienId, out var lan) || lan < c.LanCuoi))
-                .Select(c => c.NguoiHienId).ToList();
+            return donors.Select(d =>
+            {
+                var lanCuoi = candidates[d.Id];
+                var daNhac = reminded.TryGetValue(d.Id, out var lan) && lan >= lanCuoi;
+                return new PeriodicDonorDto
+                {
+                    NguoiHienId = d.Id,
+                    HoTen = d.HoTen,
+                    SoDienThoai = d.SoDienThoai,
+                    NhomMau = d.NhomMau,
+                    HeRh = d.HeRh,
+                    LanHienCuoi = lanCuoi,
+                    NgayDuDieuKien = lanCuoi.Date.AddDays(DonationRules.SoNgayToiThieuGiua2LanHien),
+                    TrangThai = daNhac ? DinhKyDaNhac : dangDangKy.Contains(d.Id) ? DinhKyDangCoDangKy : DinhKyChoGui,
+                    NgayNhac = daNhac ? lan : null
+                };
+            }).OrderBy(d => d.TrangThai == DinhKyChoGui ? 0 : 1).ThenBy(d => d.NgayDuDieuKien).ToList();
+        }
 
+        private Task<DotHienMau?> GetNextCampaignAsync() => _db.DotHienMaus
+            .Where(d => d.TrangThai == TrangThaiDot.SapDienRa || d.TrangThai == TrangThaiDot.DangDienRa)
+            .OrderBy(d => d.NgayBatDau)
+            .Include(d => d.DiemHienMau)
+            .FirstOrDefaultAsync();
+
+        public async Task<PeriodicStatusDto> GetPeriodicStatusAsync()
+        {
+            var due = await GetDueDonorsAsync();
+            var dot = await GetNextCampaignAsync();
+            var history = (await GetCampaignsAsync(LoaiThongBao.NhacLich)).Where(c => c.TieuDe == TieuDeNhacDinhKy).Take(10).ToList();
+
+            return new PeriodicStatusDto
+            {
+                TuDongBat = AutomationStatus.Enabled,
+                ChuKyPhut = AutomationStatus.IntervalMinutes,
+                LanChayGanNhat = AutomationStatus.LastRun,
+                LanChayTiepTheo = AutomationStatus.NextRun,
+                SoNgayGiua2LanHien = DonationRules.SoNgayToiThieuGiua2LanHien,
+                DotGioiThieu = dot == null ? null : $"{dot.TenDot} ({dot.NgayBatDau:dd/MM/yyyy} tại {dot.DiemHienMau?.TenDiem})",
+                SoDenHan = due.Count,
+                SoDaNhac = due.Count(d => d.TrangThai == DinhKyDaNhac),
+                SoChoGui = due.Count(d => d.TrangThai == DinhKyChoGui),
+                SoDangCoDangKy = due.Count(d => d.TrangThai == DinhKyDangCoDangKy),
+                NguoiDenHan = due,
+                LichSu = history
+            };
+        }
+
+        // Nhắc lịch hiến máu định kỳ (chạy tự động): người đã hiến đủ 12 tuần trước và chưa được nhắc kể từ lần hiến đó
+        public async Task<(bool success, string? error, SendResultDto? data)> SendPeriodicReminderAsync(int? nhanVienId, bool tuDong = false)
+        {
+            var due = await GetDueDonorsAsync();
+            if (due.Count == 0) return (false, "Hiện chưa có người hiến nào đến hạn hiến máu lại.", null);
+
+            var recipients = due.Where(d => d.TrangThai == DinhKyChoGui).Select(d => d.NguoiHienId).ToList();
             if (recipients.Count == 0) return (false, "Tất cả người đến hạn đều đã được nhắc.", null);
 
-            var dotSapToi = await _db.DotHienMaus
-                .Where(d => d.TrangThai == TrangThaiDot.SapDienRa || d.TrangThai == TrangThaiDot.DangDienRa)
-                .OrderBy(d => d.NgayBatDau)
-                .Include(d => d.DiemHienMau)
-                .FirstOrDefaultAsync();
+            var dotSapToi = await GetNextCampaignAsync();
 
             var noiDung = "Đã đủ 12 tuần kể từ lần hiến máu gần nhất của bạn. Sức khỏe của bạn đã sẵn sàng cho lần hiến tiếp theo!";
             if (dotSapToi != null)
@@ -309,7 +426,9 @@ namespace HienMauAPI.Services
                 .ToListAsync();
             foreach (var dot in upcoming)
             {
-                var daNhac = await _db.ChienDichVanDongs.AnyAsync(c => c.DotId == dot.Id && c.Loai == LoaiThongBao.NhacLich && c.TuDong);
+                // (bỏ qua chiến dịch nhắc định kỳ: nó cũng gắn DotId của đợt sắp tới nhưng không phải nhắc lịch theo đợt)
+                var daNhac = await _db.ChienDichVanDongs.AnyAsync(c => c.DotId == dot.Id && c.Loai == LoaiThongBao.NhacLich
+                    && c.TuDong && c.TieuDe != TieuDeNhacDinhKy);
                 if (daNhac) continue;
 
                 var (ok, _, data) = await SendReminderAsync(null, new SendReminderRequest

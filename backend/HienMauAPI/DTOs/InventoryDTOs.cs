@@ -16,6 +16,22 @@ namespace HienMauAPI.DTOs
         public string TrangThai { get; set; } = string.Empty;
         public int SoNgayConLai { get; set; }
         public string? HoTenNguoiHien { get; set; }
+        public string? LyDoHuy { get; set; }
+        public DateTime? NgayHuy { get; set; }
+        public string? NguoiHuy { get; set; }
+    }
+
+    public class DiscardUnitRequest
+    {
+        [Required(ErrorMessage = "Vui lòng nhập lý do hủy."), MaxLength(255)]
+        public string LyDo { get; set; } = string.Empty;
+    }
+
+    public class DiscardResultDto
+    {
+        public string Message { get; set; } = string.Empty;
+        public int SoLo { get; set; }
+        public decimal TongSoLuong { get; set; }
     }
 
     public class InventorySummaryDto
