@@ -12,7 +12,8 @@ namespace HienMauAPI.Services
             string? heRh = null, string? thanhPhan = null, string? keyword = null);
         Task<List<InventorySummaryDto>> GetSummaryAsync();
         Task<InventoryAlertsDto> GetAlertsAsync();
-        Task<IssueSuggestionDto> SuggestAsync(string nhomMau, string heRh, string thanhPhan, decimal soLuong);
+        Task<IssueSuggestionDto> SuggestAsync(string nhomMau, string heRh, string thanhPhan, decimal soLuong, bool choPhepThayThe = false);
+        Task<(bool success, string? error, List<BloodUnitDto>? data)> SplitAsync(int khoMauId, List<decimal> theTichs);
         Task<(bool success, string? error, PhieuXuatKhoDto? data)> IssueAsync(int nhanVienId, IssueRequestDto request);
         Task<List<PhieuXuatKhoDto>> GetIssuesAsync(DateTime? tuNgay, DateTime? denNgay, int? coSoYTeId);
         Task<PhieuXuatKhoDto?> GetIssueByIdAsync(int id);
@@ -67,8 +68,22 @@ namespace HienMauAPI.Services
                 HoTenNguoiHien = k.TiepNhanMau!.KhamSangLoc!.DangKyHienMau!.NguoiHienMau!.HoTen,
                 LyDoHuy = k.LyDoHuy,
                 NgayHuy = k.NgayHuy,
-                NguoiHuy = k.NhanVienHuy != null ? k.NhanVienHuy.HoTen : null
+                NguoiHuy = k.NhanVienHuy != null ? k.NhanVienHuy.HoTen : null,
+                KhoMauGocId = k.KhoMauGocId,
+                MaLoMauGoc = k.KhoMauGoc != null ? k.KhoMauGoc.MaLoMau : null
             });
+
+        // Các trường tính phía C#: số ngày còn lại, mã túi gốc (13 ký tự đầu: LM + yyMMdd + số phiếu), điều kiện bảo quản
+        private static List<BloodUnitDto> Complete(List<BloodUnitDto> units, DateTime today)
+        {
+            foreach (var u in units)
+            {
+                u.SoNgayConLai = (int)(u.HanSuDung.Date - today).TotalDays;
+                u.MaTuiMau = u.MaLoMau.Length >= 13 ? u.MaLoMau[..13] : u.MaLoMau;
+                u.DieuKienBaoQuan = ThanhPhanMauNames.DieuKienBaoQuan(u.ThanhPhanMau);
+            }
+            return units;
+        }
 
         public async Task<List<BloodUnitDto>> GetUnitsAsync(string? nhomMau, string? trangThai, bool? sapHetHan,
             string? heRh = null, string? thanhPhan = null, string? keyword = null)
@@ -93,10 +108,7 @@ namespace HienMauAPI.Services
                 query = query.Where(k => k.TrangThai == TrangThaiKhoMau.ConKho && k.HanSuDung <= limit);
             }
 
-            var units = await Project(query.OrderBy(k => k.HanSuDung), today).ToListAsync();
-            // Tính số ngày còn lại phía C# (đơn giản, không phụ thuộc hàm SQL)
-            foreach (var u in units) u.SoNgayConLai = (int)(u.HanSuDung.Date - today).TotalDays;
-            return units;
+            return Complete(await Project(query.OrderBy(k => k.HanSuDung), today).ToListAsync(), today);
         }
 
         public async Task<List<InventorySummaryDto>> GetSummaryAsync()
@@ -155,24 +167,102 @@ namespace HienMauAPI.Services
             };
         }
 
-        // FEFO: chọn các lô cùng nhóm máu/Rh/thành phần, hạn dùng gần nhất trước, cho đến khi đủ số lượng
-        public async Task<IssueSuggestionDto> SuggestAsync(string nhomMau, string heRh, string thanhPhan, decimal soLuong)
+        // Nhóm người cho có thể thay thế khi thiếu đúng nhóm (theo chỉ định bác sĩ), xếp theo thứ tự ưu tiên.
+        //  - Khối hồng cầu: tương thích hồng cầu ABO/Rh; O- dùng sau cùng vì là nhóm "cho phổ thông" khan hiếm.
+        //  - Huyết tương / tiểu cầu: tương thích huyết tương theo ABO (AB cho được mọi nhóm), không xét Rh.
+        //  - Máu toàn phần: bắt buộc cùng nhóm ABO và Rh -> không thay thế.
+        public static List<(string NhomMau, string HeRh)> NhomTuongThich(string nhomMau, string heRh, string thanhPhan)
         {
-            var units = await GetUnitsAsync(nhomMau, TrangThaiKhoMau.ConKho, null, heRh, thanhPhan);
+            var abo = new[] { "O", "A", "B", "AB" };
+            var rhs = new[] { "Rh+", "Rh-" };
+            var all = abo.SelectMany(a => rhs.Select(r => (a, r))).ToList();
+
+            List<(string, string)> list = thanhPhan switch
+            {
+                ThanhPhanMauNames.HongCau => all.Where(d =>
+                        (d.a == "O" || d.a == nhomMau || (nhomMau == "AB" && (d.a == "A" || d.a == "B")))
+                        && (heRh == "Rh+" || d.r == "Rh-"))
+                    .OrderBy(d => d.a == "O" && d.r == "Rh-" ? 1 : 0).ToList(),
+                ThanhPhanMauNames.HuyetTuong or ThanhPhanMauNames.TieuCau => all.Where(d =>
+                        d.a == nhomMau || d.a == "AB" || (nhomMau == "O")).ToList(),
+                _ => new List<(string, string)>()
+            };
+            return list.Where(d => !(d.Item1 == nhomMau && d.Item2 == heRh)).ToList();
+        }
+
+        // FEFO theo NGUYÊN TÚI: chọn các túi cùng nhóm/Rh/thành phần, hạn dùng gần nhất trước, đến khi tổng thể tích
+        // đáp ứng yêu cầu. Không rút một phần túi (đảm bảo hệ kín, vô trùng). Thiếu thì (nếu được phép) bổ sung nhóm tương thích.
+        public async Task<IssueSuggestionDto> SuggestAsync(string nhomMau, string heRh, string thanhPhan, decimal soLuong, bool choPhepThayThe = false)
+        {
             var result = new IssueSuggestionDto { SoLuongYeuCau = soLuong };
+            var thayThe = NhomTuongThich(nhomMau, heRh, thanhPhan);
+            if (choPhepThayThe) result.NhomTuongThich = thayThe.Select(t => t.NhomMau + (t.HeRh == "Rh+" ? "+" : "-")).ToList();
 
             var conLai = soLuong;
-            foreach (var u in units.OrderBy(u => u.HanSuDung).ThenBy(u => u.SoLuong))
+            var nguon = new List<(string NhomMau, string HeRh, bool LaThayThe)> { (nhomMau, heRh, false) };
+            if (choPhepThayThe) nguon.AddRange(thayThe.Select(t => (t.NhomMau, t.HeRh, true)));
+
+            foreach (var (nm, rh, laThayThe) in nguon)
             {
                 if (conLai <= 0) break;
-                var lay = Math.Min(conLai, u.SoLuong);
-                result.ChiTiet.Add(new IssueSuggestionItemDto { Lo = u, SoLuongXuat = lay });
-                conLai -= lay;
+                var units = await GetUnitsAsync(nm, TrangThaiKhoMau.ConKho, null, rh, thanhPhan);
+                foreach (var u in units.Where(u => u.SoNgayConLai >= 0).OrderBy(u => u.HanSuDung).ThenBy(u => u.SoLuong))
+                {
+                    if (conLai <= 0) break;
+                    u.LaThayThe = laThayThe;
+                    result.ChiTiet.Add(new IssueSuggestionItemDto { Lo = u, SoLuongXuat = u.SoLuong });
+                    conLai -= u.SoLuong;
+                }
             }
 
-            result.SoLuongDapUng = soLuong - Math.Max(conLai, 0);
+            result.SoLuongDapUng = result.ChiTiet.Sum(c => c.SoLuongXuat);
             result.DuSoLuong = conLai <= 0;
+            result.SoTui = result.ChiTiet.Count;
+            result.SoTuiThayThe = result.ChiTiet.Count(c => c.Lo.LaThayThe);
             return result;
+        }
+
+        // Chia túi vô trùng: dùng thiết bị hàn nối vô trùng (hệ kín) chia 1 túi thành 2-4 túi nhỏ, thường cho bệnh nhi
+        // cần lượng ít. Túi nhỏ giữ nguyên nhóm máu, chế phẩm, hạn dùng; mã = mã túi gốc + -A, -B...; túi gốc chuyển "Đã chia".
+        public async Task<(bool success, string? error, List<BloodUnitDto>? data)> SplitAsync(int khoMauId, List<decimal> theTichs)
+        {
+            if (theTichs == null || theTichs.Count < 2 || theTichs.Count > 4)
+                return (false, "Mỗi túi chỉ chia thành 2 đến 4 túi nhỏ.", null);
+            if (theTichs.Any(v => v < 20))
+                return (false, "Thể tích mỗi túi nhỏ tối thiểu 20 ml.", null);
+
+            var unit = await _db.KhoMaus.FindAsync(khoMauId);
+            if (unit == null) return (false, "Không tìm thấy đơn vị máu.", null);
+            if (unit.TrangThai != TrangThaiKhoMau.ConKho) return (false, $"Đơn vị {unit.MaLoMau} không còn trong kho.", null);
+            if (unit.HanSuDung.Date < DateTime.Now.Date) return (false, $"Đơn vị {unit.MaLoMau} đã hết hạn.", null);
+            if (unit.KhoMauGocId != null) return (false, "Túi nhỏ đã chia không được chia tiếp.", null);
+            if (unit.ThanhPhanMau == ThanhPhanMauNames.ToanPhan)
+                return (false, "Chỉ chia túi các chế phẩm (hồng cầu, huyết tương, tiểu cầu); máu toàn phần nên điều chế trước.", null);
+            if (theTichs.Sum() > unit.SoLuong)
+                return (false, $"Tổng thể tích các túi nhỏ ({theTichs.Sum():0} ml) vượt quá thể tích túi gốc ({unit.SoLuong:0} ml).", null);
+
+            await using var tx = await _db.Database.BeginTransactionAsync();
+            var children = theTichs.Select((v, i) => new KhoMau
+            {
+                TiepNhanId = unit.TiepNhanId,
+                MaLoMau = $"{unit.MaLoMau}-{(char)('A' + i)}",
+                NhomMau = unit.NhomMau,
+                HeRh = unit.HeRh,
+                ThanhPhanMau = unit.ThanhPhanMau,
+                SoLuong = v,
+                HanSuDung = unit.HanSuDung,
+                ViTriLuuTru = unit.ViTriLuuTru,
+                TrangThai = TrangThaiKhoMau.ConKho,
+                KhoMauGocId = unit.Id
+            }).ToList();
+            _db.KhoMaus.AddRange(children);
+            unit.TrangThai = TrangThaiKhoMau.DaChia;
+            await _db.SaveChangesAsync();
+            await tx.CommitAsync();
+
+            var ids = children.Select(c => c.Id).ToList();
+            var today = DateTime.Now.Date;
+            return (true, null, Complete(await Project(_db.KhoMaus.Where(k => ids.Contains(k.Id)).OrderBy(k => k.MaLoMau), today).ToListAsync(), today));
         }
 
         // Kiểm tra TOÀN BỘ phiếu trước, chỉ ghi dữ liệu khi mọi lô đều hợp lệ -> không để lại phiếu "mồ côi".
@@ -201,11 +291,13 @@ namespace HienMauAPI.Services
                 noiNhan = request.NoiNhan.Trim();
             }
 
-            // Gộp các dòng trùng lô (nếu có) để kiểm tra tổng số lượng yêu cầu của từng lô
-            var requested = request.ChiTiet
-                .GroupBy(i => i.KhoMauId)
-                .Select(g => new { KhoMauId = g.Key, SoLuong = g.Sum(x => x.SoLuong) })
-                .ToList();
+            var mucDo = InputValidator.NormalizeOptional(request.MucDoKhanCap) ?? MucDoKhanCap.Thuong;
+            if (mucDo is not (MucDoKhanCap.Thuong or MucDoKhanCap.Khan or MucDoKhanCap.CapCuu))
+                return (false, "Mức độ khẩn cấp không hợp lệ.", null);
+
+            if (request.ChiTiet.GroupBy(i => i.KhoMauId).Any(g => g.Count() > 1))
+                return (false, "Một đơn vị máu chỉ được xuất một lần trong phiếu.", null);
+            var requested = request.ChiTiet.Select(i => new { i.KhoMauId, i.SoLuong }).ToList();
 
             var ids = requested.Select(r => r.KhoMauId).ToList();
             var units = await _db.KhoMaus.Where(k => ids.Contains(k.Id)).ToDictionaryAsync(k => k.Id);
@@ -213,20 +305,19 @@ namespace HienMauAPI.Services
 
             foreach (var item in requested)
             {
-                if (item.SoLuong <= 0)
-                    return (false, "Số lượng xuất phải lớn hơn 0.", null);
-
                 if (!units.TryGetValue(item.KhoMauId, out var unit))
-                    return (false, $"Không tìm thấy lô máu #{item.KhoMauId}.", null);
+                    return (false, $"Không tìm thấy đơn vị máu #{item.KhoMauId}.", null);
 
                 if (unit.TrangThai != TrangThaiKhoMau.ConKho)
-                    return (false, $"Lô máu {unit.MaLoMau} không còn khả dụng để xuất.", null);
+                    return (false, $"Đơn vị máu {unit.MaLoMau} không còn khả dụng để xuất.", null);
 
                 if (unit.HanSuDung.Date < today)
-                    return (false, $"Lô máu {unit.MaLoMau} đã hết hạn sử dụng, không thể xuất.", null);
+                    return (false, $"Đơn vị máu {unit.MaLoMau} đã hết hạn sử dụng, không thể xuất.", null);
 
-                if (item.SoLuong > unit.SoLuong)
-                    return (false, $"Số lượng xuất ({item.SoLuong}ml) vượt quá tồn kho của lô {unit.MaLoMau} ({unit.SoLuong}ml).", null);
+                // Xuất nguyên túi: không rút một phần túi máu (đảm bảo hệ kín, vô trùng)
+                if (item.SoLuong.HasValue && item.SoLuong.Value != unit.SoLuong)
+                    return (false, $"Máu được xuất nguyên túi: {unit.MaLoMau} có {unit.SoLuong:0} ml. " +
+                                   "Nếu cần lượng nhỏ hơn, hãy dùng chức năng chia túi vô trùng trước khi xuất.", null);
             }
 
             await using var tx = await _db.Database.BeginTransactionAsync();
@@ -237,7 +328,9 @@ namespace HienMauAPI.Services
                     NhanVienId = nhanVienId,
                     CoSoYTeId = coSo?.Id,
                     NoiNhan = noiNhan,
-                    LyDo = InputValidator.NormalizeOptional(request.LyDo)
+                    LyDo = InputValidator.NormalizeOptional(request.LyDo),
+                    NguoiNhan = InputValidator.NormalizeOptional(request.NguoiNhan),
+                    MucDoKhanCap = mucDo
                 };
 
                 var chiTietList = new List<ChiTietXuatDto>();
@@ -248,11 +341,11 @@ namespace HienMauAPI.Services
                     phieu.ChiTietXuatKhos.Add(new ChiTietXuatKho
                     {
                         KhoMauId = unit.Id,
-                        SoLuong = item.SoLuong
+                        SoLuong = unit.SoLuong
                     });
 
-                    unit.SoLuong -= item.SoLuong;
-                    if (unit.SoLuong <= 0) unit.TrangThai = TrangThaiKhoMau.DaXuat;
+                    // Túi giữ nguyên thể tích ghi trên nhãn để truy vết; chỉ đổi trạng thái sang Đã xuất
+                    unit.TrangThai = TrangThaiKhoMau.DaXuat;
 
                     chiTietList.Add(new ChiTietXuatDto
                     {
@@ -261,7 +354,8 @@ namespace HienMauAPI.Services
                         NhomMau = unit.NhomMau,
                         HeRh = unit.HeRh,
                         ThanhPhanMau = unit.ThanhPhanMau,
-                        SoLuong = item.SoLuong
+                        SoLuong = unit.SoLuong,
+                        HanSuDung = unit.HanSuDung
                     });
                 }
 
@@ -276,6 +370,8 @@ namespace HienMauAPI.Services
                     NoiNhan = phieu.NoiNhan,
                     NgayXuat = phieu.NgayXuat,
                     LyDo = phieu.LyDo,
+                    NguoiNhan = phieu.NguoiNhan,
+                    MucDoKhanCap = phieu.MucDoKhanCap,
                     NhanVienThucHien = nhanVien.HoTen,
                     TongSoLuong = chiTietList.Sum(c => c.SoLuong),
                     ChiTiet = chiTietList
@@ -296,6 +392,8 @@ namespace HienMauAPI.Services
                 NoiNhan = p.NoiNhan,
                 NgayXuat = p.NgayXuat,
                 LyDo = p.LyDo,
+                NguoiNhan = p.NguoiNhan,
+                MucDoKhanCap = p.MucDoKhanCap,
                 NhanVienThucHien = p.NhanVien!.HoTen,
                 TongSoLuong = p.ChiTietXuatKhos.Sum(c => c.SoLuong),
                 ChiTiet = p.ChiTietXuatKhos.Select(c => new ChiTietXuatDto
@@ -305,7 +403,8 @@ namespace HienMauAPI.Services
                     NhomMau = c.KhoMau!.NhomMau,
                     HeRh = c.KhoMau!.HeRh,
                     ThanhPhanMau = c.KhoMau!.ThanhPhanMau,
-                    SoLuong = c.SoLuong
+                    SoLuong = c.SoLuong,
+                    HanSuDung = c.KhoMau!.HanSuDung
                 }).ToList()
             });
 

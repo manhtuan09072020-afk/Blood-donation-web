@@ -54,7 +54,10 @@ namespace HienMauAPI.Services
                 NgayDangKy = r.NgayDangKy,
                 TrangThai = r.TrangThai,
                 GhiChu = r.GhiChu,
-                KhamSangLocId = r.KhamSangLoc != null ? r.KhamSangLoc.Id : null
+                KhamSangLocId = r.KhamSangLoc != null ? r.KhamSangLoc.Id : null,
+                TheTichDangKy = r.TheTichDangKy,
+                TheTichChiDinh = r.KhamSangLoc != null ? r.KhamSangLoc.TheTichChiDinh : null,
+                CanNang = r.NguoiHienMau!.CanNang
             });
 
         public async Task<List<RegistrationDto>> GetAllAsync(int? dotId, string? trangThai, string? keyword)
@@ -89,15 +92,18 @@ namespace HienMauAPI.Services
         }
 
         public Task<(bool success, string? error, RegistrationDto? data)> CreateAsync(int nguoiHienId, CreateRegistrationRequest request)
-            => CreateInternalAsync(nguoiHienId, request.DotId, request.GhiChu, TrangThaiDangKy.ChoDuyet, laNhanVien: false);
+            => CreateInternalAsync(nguoiHienId, request.DotId, request.GhiChu, request.TheTichDangKy, TrangThaiDangKy.ChoDuyet, laNhanVien: false);
 
         // Người hiến đến trực tiếp: nhân viên đăng ký hộ và duyệt luôn để chuyển sang khám sàng lọc
         public Task<(bool success, string? error, RegistrationDto? data)> CreateWalkInAsync(WalkInRegistrationRequest request)
-            => CreateInternalAsync(request.NguoiHienId, request.DotId, request.GhiChu, TrangThaiDangKy.DaDuyet, laNhanVien: true);
+            => CreateInternalAsync(request.NguoiHienId, request.DotId, request.GhiChu, request.TheTichDangKy, TrangThaiDangKy.DaDuyet, laNhanVien: true);
 
         private async Task<(bool success, string? error, RegistrationDto? data)> CreateInternalAsync(
-            int nguoiHienId, int dotId, string? ghiChu, string trangThaiBanDau, bool laNhanVien)
+            int nguoiHienId, int dotId, string? ghiChu, int? theTichDangKy, string trangThaiBanDau, bool laNhanVien)
         {
+            if (theTichDangKy.HasValue && !DonationRules.LaTheTichChuan(theTichDangKy.Value))
+                return (false, "Thể tích đăng ký hiến chỉ được chọn 250, 350 hoặc 450 ml.", null);
+
             var donor = await _db.NguoiHienMaus.FindAsync(nguoiHienId);
             if (donor == null || !donor.TrangThai)
                 return (false, "Hồ sơ người hiến máu không tồn tại hoặc đã bị khóa.", null);
@@ -171,6 +177,7 @@ namespace HienMauAPI.Services
                 existing.TrangThai = trangThaiBanDau;
                 existing.GhiChu = InputValidator.NormalizeOptional(ghiChu);
                 existing.NgayDangKy = DateTime.Now;
+                existing.TheTichDangKy = theTichDangKy;
                 registrationId = existing.Id;
             }
             else
@@ -180,6 +187,7 @@ namespace HienMauAPI.Services
                     NguoiHienId = nguoiHienId,
                     DotId = dotId,
                     GhiChu = InputValidator.NormalizeOptional(ghiChu),
+                    TheTichDangKy = theTichDangKy,
                     TrangThai = trangThaiBanDau
                 };
                 _db.DangKyHienMaus.Add(registration);

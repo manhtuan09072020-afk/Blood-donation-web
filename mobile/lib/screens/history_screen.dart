@@ -101,6 +101,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             Text('${fmtTime.format(r.ngayBatDau)} · ${r.tenDiem}', style: const TextStyle(color: AppColors.muted, fontSize: 13)),
                             const SizedBox(height: 6),
                             StatusChip.registration(r.trangThai),
+                            if (r.theTichDangKy != null || r.theTichChiDinh != null) ...[
+                              const SizedBox(height: 6),
+                              Text(
+                                [
+                                  if (r.theTichDangKy != null) 'Đăng ký hiến ${r.theTichDangKy} ml',
+                                  if (r.theTichChiDinh != null) 'bác sĩ chỉ định ${r.theTichChiDinh} ml',
+                                ].join(' · '),
+                                style: const TextStyle(fontSize: 12.5, color: AppColors.primary, fontWeight: FontWeight.w600),
+                              ),
+                            ],
                           ]),
                         ),
                       ]),

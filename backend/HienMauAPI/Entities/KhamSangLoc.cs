@@ -34,6 +34,9 @@ namespace HienMauAPI.Entities
         [MaxLength(255)]
         public string? LyDoKhongDat { get; set; }
 
+        // Thể tích bác sĩ chỉ định được lấy (ml) khi kết quả Đạt
+        public int? TheTichChiDinh { get; set; }
+
         public TiepNhanMau? TiepNhanMau { get; set; }
     }
 }

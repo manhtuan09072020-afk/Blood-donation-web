@@ -16,6 +16,9 @@ namespace HienMauAPI.DTOs
         public string? GhiChu { get; set; }
         public string NhanVienThucHien { get; set; } = string.Empty;
         public string? MaLoMauTaoRa { get; set; }
+        public string MaTuiMau { get; set; } = string.Empty; // mã túi gốc - các chế phẩm dùng chung tiền tố này
+        public string? LoaiTui { get; set; }
+        public int? TheTichChiDinh { get; set; }
         public List<CollectionUnitDto> CacLoMau { get; set; } = new();
     }
 
@@ -38,6 +41,13 @@ namespace HienMauAPI.DTOs
 
         [MaxLength(255)]
         public string? GhiChu { get; set; }
+
+        // Thời điểm lấy máu thực tế (mặc định: bây giờ). Hạn sử dụng tính từ ngày này.
+        public DateTime? NgayLayMau { get; set; }
+
+        // Don (máu toàn phần) | Doi (hồng cầu + huyết tương) | Ba (hồng cầu + huyết tương + tiểu cầu)
+        [MaxLength(10)]
+        public string? LoaiTui { get; set; }
 
         // Trường hợp nhập kho nguyên túi (không điều chế): dùng các trường bên dưới.
         [MaxLength(30)]

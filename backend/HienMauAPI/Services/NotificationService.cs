@@ -458,13 +458,17 @@ namespace HienMauAPI.Services
                     .Where(d => d.TrangThai == TrangThaiDot.SapDienRa || d.TrangThai == TrangThaiDot.DangDienRa)
                     .OrderBy(d => d.NgayBatDau).FirstOrDefaultAsync();
 
-                var noiDung = $"Kho máu đang thiếu nhóm {g.NhomMau} {g.HeRh} (còn {g.TonKho:0} ml, ngưỡng an toàn {g.NguongCanhBao:0} ml). " +
+                // Cạn kiệt: tồn kho < 25% ngưỡng an toàn -> nội dung khẩn cấp
+                var canKiet = g.NguongCanhBao > 0 && g.TonKho < g.NguongCanhBao * 0.25m;
+                var noiDung = (canKiet
+                        ? $"Kho máu nhóm {g.NhomMau} {g.HeRh} đang CẠN KIỆT, chỉ còn {g.TonKho:0} ml (ngưỡng an toàn {g.NguongCanhBao:0} ml), không đủ đáp ứng cấp cứu. "
+                        : $"Kho máu đang thiếu nhóm {g.NhomMau} {g.HeRh} (còn {g.TonKho:0} ml, ngưỡng an toàn {g.NguongCanhBao:0} ml). ") +
                               "Bạn có cùng nhóm máu - sự giúp đỡ của bạn lúc này vô cùng quý giá!";
                 if (dot != null) noiDung += $" Mời bạn đăng ký \"{dot.TenDot}\" ngày {dot.NgayBatDau:dd/MM/yyyy}.";
 
                 var (ok, _, data) = await SendCallForDonationAsync(null, new SendCallForDonationRequest
                 {
-                    TieuDe = $"Khẩn cấp: cần máu nhóm {g.NhomMau} {g.HeRh}",
+                    TieuDe = canKiet ? $"KHẨN CẤP: Kho máu nhóm {g.NhomMau} {g.HeRh} đang cạn kiệt" : $"Cần máu nhóm {g.NhomMau} {g.HeRh}",
                     NoiDung = noiDung.Length > 500 ? noiDung[..500] : noiDung,
                     NhomMau = g.NhomMau,
                     HeRh = g.HeRh,

@@ -64,6 +64,7 @@ export const inventoryApi = {
   getIssue: (id) => client.get(`/inventory/issues/${id}`),
   discard: (id, lyDo) => client.put(`/inventory/units/${id}/discard`, { lyDo }),
   discardExpired: () => client.post('/inventory/units/discard-expired'),
+  split: (id, theTichs) => client.post(`/inventory/units/${id}/split`, { theTichs }),
   updateLocation: (id, viTriLuuTru) => client.put(`/inventory/units/${id}/location`, { viTriLuuTru })
 };
 

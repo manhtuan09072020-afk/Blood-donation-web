@@ -49,6 +49,72 @@ namespace HienMauAPI.Tests
         }
 
         [Fact]
+        public async Task Create_VolumeAboveDoctorPrescription_IsRejected()
+        {
+            using var db = TestDb.Create();
+            var (staffId, donorId, dotId) = TestDb.SeedBasics(db);
+            var screeningId = SeedScreening(db, staffId, donorId, dotId, "Dat");
+            (await db.KhamSangLocs.SingleAsync()).TheTichChiDinh = 250;
+            db.SaveChanges();
+            var service = new CollectionService(db);
+
+            var (success, error, _) = await service.CreateAsync(staffId, Req(screeningId)); // 350 ml > 250 ml chỉ định
+
+            Assert.False(success);
+            Assert.Contains("chỉ định", error);
+            Assert.Equal(0, await db.KhoMaus.CountAsync());
+        }
+
+        [Fact]
+        public async Task Create_ExpiryIsCountedFromCollectionDate_AndBagTypeIsRecorded()
+        {
+            using var db = TestDb.Create();
+            var (staffId, donorId, dotId) = TestDb.SeedBasics(db);
+            var screeningId = SeedScreening(db, staffId, donorId, dotId, "Dat");
+            (await db.KhamSangLocs.SingleAsync()).NgayKham = DateTime.Now.AddDays(-1).AddHours(-1);
+            db.SaveChanges();
+            var service = new CollectionService(db);
+            var ngayLay = DateTime.Now.AddDays(-1);
+
+            var (success, error, data) = await service.CreateAsync(staffId, new CreateCollectionRequest
+            {
+                KhamSangLocId = screeningId, TheTich = 350m, NgayLayMau = ngayLay, LoaiTui = LoaiTuiMau.Ba,
+                ThanhPhans = new()
+                {
+                    new() { ThanhPhanMau = "HongCau", TheTich = 190m },
+                    new() { ThanhPhanMau = "HuyetTuong", TheTich = 120m },
+                    new() { ThanhPhanMau = "TieuCau", TheTich = 40m }
+                }
+            });
+
+            Assert.True(success, error);
+            Assert.Equal(LoaiTuiMau.Ba, data!.LoaiTui);
+            Assert.All(data.CacLoMau, u => Assert.StartsWith(data.MaTuiMau, u.MaLoMau));
+            var tieuCau = await db.KhoMaus.SingleAsync(k => k.ThanhPhanMau == "TieuCau");
+            Assert.Equal(ngayLay.Date.AddDays(5), tieuCau.HanSuDung); // tiểu cầu: 5 ngày kể từ ngày lấy máu
+        }
+
+        [Fact]
+        public async Task Create_BagTypeMismatchOrFutureDate_IsRejected()
+        {
+            using var db = TestDb.Create();
+            var (staffId, donorId, dotId) = TestDb.SeedBasics(db);
+            var screeningId = SeedScreening(db, staffId, donorId, dotId, "Dat");
+            var service = new CollectionService(db);
+
+            var wrongBag = Req(screeningId);
+            wrongBag.LoaiTui = LoaiTuiMau.Doi; // túi đôi nhưng khai báo máu toàn phần
+            var future = Req(screeningId);
+            future.NgayLayMau = DateTime.Now.AddHours(3);
+
+            var (bagOk, _, _) = await service.CreateAsync(staffId, wrongBag);
+            var (futureOk, _, _) = await service.CreateAsync(staffId, future);
+
+            Assert.False(bagOk);
+            Assert.False(futureOk);
+        }
+
+        [Fact]
         public async Task Create_FailedScreening_IsRejected()
         {
             using var db = TestDb.Create();

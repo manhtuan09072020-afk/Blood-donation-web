@@ -168,7 +168,7 @@ namespace HienMauAPI.Services
                 Hemoglobin = r.KhamSangLoc?.Hemoglobin,
                 NgayLayMau = r.KhamSangLoc?.TiepNhanMau?.NgayLayMau,
                 TheTich = r.KhamSangLoc?.TiepNhanMau?.TheTich,
-                MaLoMau = r.KhamSangLoc?.TiepNhanMau?.KhoMaus.Select(k => k.MaLoMau).ToList() ?? new List<string>()
+                MaLoMau = r.KhamSangLoc?.TiepNhanMau?.KhoMaus.Where(k => k.KhoMauGocId == null).Select(k => k.MaLoMau).ToList() ?? new List<string>()
             }).ToList();
         }
 

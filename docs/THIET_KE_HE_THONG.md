@@ -116,25 +116,25 @@ Phân quyền được kiểm tra hai lớp: **API** (`[Authorize(Roles = ...)]`
 |---|---|
 | Tác nhân | NV sàng lọc |
 | Tiền điều kiện | Đăng ký ở trạng thái *Đã duyệt*, chưa có kết quả khám |
-| Luồng chính | 1. Chọn người hiến trong danh sách chờ khám → 2. Nhập cân nặng, huyết áp, mạch, nhiệt độ, Hemoglobin → 3. Bảng kiểm tự đánh giá từng tiêu chuẩn → 4. Chọn kết luận → 5. Lưu, cập nhật đăng ký thành *Đạt sàng lọc* / *Không đạt*, gửi thông báo |
-| Quy tắc | Kết luận *Đạt* chỉ khi: cân nặng ≥ 42 kg, HA 90–160/60–100, mạch 50–100, nhiệt độ ≤ 37,5 °C, Hb ≥ 12 g/dL. *Không đạt* bắt buộc nhập lý do |
+| Luồng chính | 1. Chọn người hiến trong danh sách chờ khám (thấy thể tích người hiến muốn hiến) → 2. Nhập cân nặng, huyết áp, mạch, nhiệt độ, Hemoglobin → 3. Bảng kiểm tự đánh giá từng tiêu chuẩn → 4. Chọn kết luận; nếu *Đạt* thì **chỉ định thể tích được hiến** (250/350/450 ml) → 5. Lưu, cập nhật đăng ký thành *Đạt sàng lọc* / *Không đạt*, gửi thông báo |
+| Quy tắc | Kết luận *Đạt* chỉ khi: cân nặng ≥ 42 kg, HA 90–160/60–100, mạch 50–100, nhiệt độ ≤ 37,5 °C, Hb ≥ 12 g/dL. Thể tích chỉ định ≤ 9 ml/kg (< 45 kg: 250 ml; 45–49 kg: 350 ml; ≥ 50 kg: 450 ml), Hb < 12,5 g/dL chỉ 250 ml. *Không đạt* bắt buộc nhập lý do |
 
 #### UC11 — Tiếp nhận máu & nhập kho (nghiệp vụ phức tạp 1)
 | Mục | Nội dung |
 |---|---|
 | Tác nhân | NV tiếp nhận |
 | Tiền điều kiện | Kết quả sàng lọc *Đạt*, chưa có phiếu tiếp nhận |
-| Luồng chính | 1. Chọn người hiến chờ lấy máu → 2. Chọn thể tích → 3. Chọn *nhập nguyên túi* hoặc *điều chế tách thành phần* → 4. Nhập vị trí lưu trữ → 5. Hệ thống tạo `TiepNhanMau` và một/nhiều `KhoMau` trong **một transaction**, sinh mã đơn vị `LM{yyMMdd}{id}{TP/HC/HT/TC}`, hạn dùng theo thành phần → 6. Đăng ký → *Đã hiến máu*, gửi thông báo cảm ơn kèm ngày được hiến lại |
+| Luồng chính | 1. Chọn người hiến chờ lấy máu (thấy thể tích bác sĩ chỉ định) → 2. Nhập **thời điểm lấy máu** và thể tích thực lấy → 3. Chọn **loại túi**: túi đơn (máu toàn phần) / túi đôi (hồng cầu + huyết tương) / túi ba (+ tiểu cầu) → 4. Xem trước từng túi con: thể tích, hạn dùng (tính từ ngày lấy), điều kiện bảo quản, vị trí → 5. Hệ thống tạo `TiepNhanMau` và một/nhiều `KhoMau` trong **một transaction**; mỗi lần hiến là một túi riêng, mã túi gốc `LM{yyMMdd}{id}`, chế phẩm = mã túi gốc + `TP/HC/HT/TC` → 6. Đăng ký → *Đã hiến máu*, gửi thông báo cảm ơn kèm ngày được hiến lại |
 | Luồng phụ | Người hiến chưa biết nhóm máu → bắt buộc nhập kết quả xét nghiệm, lưu vào hồ sơ |
-| Ngoại lệ | Tổng thể tích thành phần > thể tích lấy; trùng thành phần; hạn dùng ≤ hôm nay → từ chối, không ghi dữ liệu |
+| Ngoại lệ | Thể tích > chỉ định + 10%; thời điểm lấy ở tương lai / trước giờ khám; loại túi không khớp chế phẩm; túi ba từ đơn vị < 350 ml; tổng thành phần > thể tích lấy; hạn dùng vượt thời hạn bảo quản → từ chối, không ghi dữ liệu |
 
 #### UC13 — Xuất kho (nghiệp vụ phức tạp 2)
 | Mục | Nội dung |
 |---|---|
 | Tác nhân | NV quản lý kho |
-| Luồng chính | 1. Chọn cơ sở y tế, nhập lý do → 2. Nhập các dòng yêu cầu (nhóm máu, Rh, thành phần, ml) → 3. Hệ thống gợi ý đơn vị theo **FEFO** (hạn gần nhất trước) → 4. Điều chỉnh số lượng → 5. Xác nhận → hệ thống kiểm tra **toàn bộ** phiếu rồi mới ghi (transaction), trừ tồn, lô hết số lượng → *Đã xuất* → 6. In phiếu xuất |
-| Luồng phụ | Không đủ máu → hiển thị lượng thiếu và nhóm máu tương thích thay thế, gợi ý gửi kêu gọi |
-| Ngoại lệ | Lô hết hạn / không còn trong kho / xuất vượt tồn → từ chối toàn bộ phiếu |
+| Luồng chính | 1. Nhập **phiếu yêu cầu** của cơ sở y tế: mức độ (thường / khẩn / cấp cứu), người nhận, lý do, các dòng (nhóm máu, Rh, chế phẩm, lượng cần) → 2. Hệ thống chọn **túi nguyên vẹn** theo **FEFO** đến khi đủ lượng (báo phần dư do xuất nguyên túi) → 3. **Bảng kiểm** trước khi giao: đối chiếu mã/nhóm, nhãn & hạn dùng, túi nguyên vẹn, thùng vận chuyển đúng nhiệt độ → 4. Xác nhận → kiểm tra **toàn bộ** phiếu rồi mới ghi (transaction), túi → *Đã xuất* → 5. In **phiếu xuất kiêm biên bản giao nhận** |
+| Luồng phụ | Thiếu đúng nhóm → (nếu bác sĩ cho phép) bổ sung **nhóm tương thích**: hồng cầu theo ABO/Rh (O− dùng sau cùng), huyết tương/tiểu cầu theo ABO; vẫn thiếu → nút gửi kêu gọi nhóm đó. Cần lượng nhỏ (bệnh nhi) → **chia túi vô trùng** 1 túi thành 2–4 túi nhỏ (mã `…-A/-B`, giữ hạn dùng) rồi xuất túi nhỏ |
+| Ngoại lệ | Rút một phần túi; túi hết hạn / không còn trong kho; trùng túi trong phiếu → từ chối toàn bộ phiếu |
 
 #### UC14 — Thông báo & vận động hiến máu
 | Mục | Nội dung |
@@ -386,7 +386,7 @@ Ràng buộc toàn vẹn chính (xem `database/HienMauNhanDao_CreateDB.sql`): `C
 
 ## 4. Kiểm thử
 
-### 4.1. Kiểm thử đơn vị (tự động) — `dotnet test` (48 test)
+### 4.1. Kiểm thử đơn vị (tự động) — `dotnet test` (70 test)
 
 | Nhóm | Nội dung kiểm thử |
 |---|---|
@@ -394,7 +394,7 @@ Ràng buộc toàn vẹn chính (xem `database/HienMauNhanDao_CreateDB.sql`): `C
 | Đăng ký hiến máu | Trùng đăng ký, khoảng cách 84 ngày, đợt kết thúc, chuyển trạng thái hợp lệ/không hợp lệ, đủ số lượng, một đăng ký hiệu lực, đăng ký tại điểm |
 | Sàng lọc | Từ chối kết luận *Đạt* khi thiếu cân, Hb thấp, huyết áp cao |
 | Tiếp nhận | Chỉ nhận người đạt sàng lọc, không tiếp nhận 2 lần, hạn dùng quá khứ, nhập nhóm máu khi chưa biết, tách thành phần, vượt thể tích |
-| Kho máu | Xuất một phần/toàn bộ, vượt tồn, lô hết hạn, nhiều lô, phiếu không mồ côi, FEFO, thiếu hàng, xuất theo cơ sở y tế |
+| Kho máu | Xuất nguyên túi (chặn rút một phần), lô hết hạn, nhiều lô, phiếu không mồ côi, FEFO, nhóm tương thích, chia túi vô trùng, hủy bỏ có lý do, xuất theo cơ sở y tế |
 | Vận động | Bỏ qua người chưa đủ 12 tuần, lưu lịch sử chiến dịch, tự chuyển trạng thái đợt |
 
 ### 4.2. Kiểm thử chức năng (thủ công) — kịch bản demo

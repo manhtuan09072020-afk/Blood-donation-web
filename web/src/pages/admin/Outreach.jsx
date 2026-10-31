@@ -11,7 +11,23 @@ import dayjs from 'dayjs';
 import { notificationApi, campaignApi, donorApi, catalogApi } from '../../api';
 import { useAuth, ROLES } from '../../context/AuthContext';
 import { BloodBadge, NotificationTypeTag, PageHeader, RegistrationStatusTag } from '../../components/common';
-import { fmtDate, fmtDateTime, fmtMl, fromNow, LOAI_THONG_BAO } from '../../utils/format';
+import { fmtDate, fmtDateTime, fmtMl, fromNow, LOAI_THONG_BAO, shortageLevel, bloodLabel } from '../../utils/format';
+
+// Soạn sẵn nội dung kêu gọi theo mức độ thiếu máu của nhóm
+function callTemplate(g, dot) {
+  const nhom = `${g.nhomMau} ${g.heRh}`;
+  const lv = shortageLevel(g.tonKho, g.nguongCanhBao);
+  const moi = dot ? ` Mời bạn đăng ký "${dot.tenDot}" ngày ${dayjs(dot.ngayBatDau).format('DD/MM/YYYY')} tại ${dot.tenDiem}.` : ' Hãy đăng ký hiến máu tại đợt gần nhất.';
+  return lv.key === 'CanKiet'
+    ? {
+      tieuDe: `KHẨN CẤP: Kho máu nhóm ${nhom} đang cạn kiệt`,
+      noiDung: `Kho máu nhóm ${nhom} chỉ còn ${Math.round(g.tonKho)} ml (ngưỡng an toàn ${Math.round(g.nguongCanhBao)} ml), không đủ đáp ứng cấp cứu. Bạn có cùng nhóm máu — sự giúp đỡ của bạn lúc này có thể cứu sống người bệnh.${moi}`
+    }
+    : {
+      tieuDe: `Cần máu nhóm ${nhom}`,
+      noiDung: `Kho máu nhóm ${nhom} đang dưới ngưỡng an toàn (còn ${Math.round(g.tonKho)} / ${Math.round(g.nguongCanhBao)} ml). Bạn có cùng nhóm máu, mong bạn sắp xếp thời gian hiến máu.${moi}`
+    };
+}
 
 function CallForDonation({ onSent }) {
   const { message } = App.useApp();
@@ -29,15 +45,29 @@ function CallForDonation({ onSent }) {
     campaignApi.getAll({ trangThai: 'SapDienRa,DangDienRa' }).then(setCampaigns);
   }, []);
 
+  // Nhóm thiếu xếp theo mức độ nguy cấp (tỷ lệ tồn / ngưỡng thấp nhất lên đầu)
+  const low = useMemo(() => groups.filter((g) => g.canhBaoThieu)
+    .map((g) => ({ ...g, level: shortageLevel(g.tonKho, g.nguongCanhBao) }))
+    .sort((a, b) => a.level.pct - b.level.pct), [groups]);
+  const nextCampaign = useMemo(() => [...campaigns].sort((a, b) => dayjs(a.ngayBatDau) - dayjs(b.ngayBatDau))[0], [campaigns]);
+
+  const eligibleOf = (nhomMau, heRh) => donors.filter((d) => d.nhomMau === nhomMau && d.heRh === heRh
+    && !(d.ngayCoTheHienTiepTheo && dayjs(d.ngayCoTheHienTiepTheo).isAfter(dayjs(), 'day'))).length;
+
+  const pick = (g) => form.setFieldsValue({ nhomMau: g.nhomMau, heRh: g.heRh, dotId: nextCampaign?.id, chiNguoiDuDieuKien: true, ...callTemplate(g, nextCampaign) });
+
+  // Mở từ trang khác (?nhomMau=..&heRh=..) thì chọn nhóm đó; nếu không, tự chọn nhóm nguy cấp nhất
   useEffect(() => {
-    const nhomMau = params.get('nhomMau') || 'O';
-    const heRh = params.get('heRh') || undefined;
-    form.setFieldsValue({
-      nhomMau, heRh, chiNguoiDuDieuKien: true,
-      tieuDe: `Khẩn cấp: cần máu nhóm ${nhomMau}${heRh ? ' ' + heRh : ''}`,
-      noiDung: `Kho máu đang thiếu nhóm ${nhomMau}${heRh ? ' ' + heRh : ''}. Bạn có cùng nhóm máu — sự giúp đỡ của bạn lúc này vô cùng quý giá. Hãy đăng ký hiến máu tại đợt gần nhất!`
-    });
-  }, [params, form]);
+    if (!groups.length) return;
+    const nhomMau = params.get('nhomMau');
+    const heRh = params.get('heRh');
+    // Ưu tiên nhóm nguy cấp nhất mà vẫn còn người hiến đủ điều kiện để kêu gọi
+    const g = nhomMau ? groups.find((x) => x.nhomMau === nhomMau && x.heRh === (heRh || x.heRh))
+      : (low.find((x) => eligibleOf(x.nhomMau, x.heRh) > 0) || low[0]);
+    if (g) pick(g);
+    else form.setFieldsValue({ nhomMau: 'TatCa', chiNguoiDuDieuKien: true, tieuDe: 'Lời mời tham gia hiến máu tình nguyện', noiDung: 'Mỗi giọt máu cho đi — một cuộc đời ở lại. Mời bạn đăng ký tham gia đợt hiến máu gần nhất!' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params, groups, campaigns, donors]);
 
   const estimate = useMemo(() => donors.filter((d) => {
     if (v.nhomMau && v.nhomMau !== 'TatCa' && d.nhomMau !== v.nhomMau) return false;
@@ -57,8 +87,6 @@ function CallForDonation({ onSent }) {
     finally { setSending(false); }
   };
 
-  const low = groups.filter((g) => g.canhBaoThieu);
-
   return (
     <Row gutter={24}>
       <Col xs={24} lg={15}>
@@ -72,22 +100,41 @@ function CallForDonation({ onSent }) {
           <Form.Item name="tieuDe" label="Tiêu đề" rules={[{ required: true }]}><Input maxLength={150} showCount /></Form.Item>
           <Form.Item name="noiDung" label="Nội dung" rules={[{ required: true }]}><Input.TextArea rows={4} maxLength={500} showCount /></Form.Item>
           <Form.Item name="chiNguoiDuDieuKien" label="Chỉ gửi người đã đủ 12 tuần kể từ lần hiến gần nhất" valuePropName="checked"><Switch /></Form.Item>
+          {!estimate && v.nhomMau && v.nhomMau !== 'TatCa' && (
+            <Alert type="warning" showIcon style={{ marginBottom: 12 }}
+              message={`Hiện không có người hiến nhóm ${v.nhomMau}${v.heRh ? ` ${v.heRh}` : ''} đủ điều kiện`}
+              description="Có thể bỏ chọn hệ Rh, tắt điều kiện 12 tuần, hoặc gửi lời mời chung (Tất cả nhóm máu) để tìm người hiến mới." />
+          )}
           <Space>
             <Button type="primary" size="large" icon={<SendOutlined />} loading={sending} onClick={send} disabled={!estimate}>Gửi đến {estimate} người hiến</Button>
           </Space>
         </Form>
       </Col>
       <Col xs={24} lg={9}>
-        <Card size="small" title="Nhóm máu đang thiếu" style={{ background: '#fff7f8' }}>
-          {low.length === 0 ? <Alert type="success" message="Kho máu đủ ngưỡng an toàn" /> : low.map((g) => (
-            <div key={g.nhomMau + g.heRh} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px dashed #fecdd3' }}>
-              <Space><BloodBadge nhomMau={g.nhomMau} heRh={g.heRh} /><span style={{ fontSize: 13 }}>{fmtMl(g.tonKho)} / {fmtMl(g.nguongCanhBao)}</span></Space>
-              <Button size="small" onClick={() => form.setFieldsValue({
-                nhomMau: g.nhomMau, heRh: g.heRh, tieuDe: `Khẩn cấp: cần máu nhóm ${g.nhomMau} ${g.heRh}`,
-                noiDung: `Kho máu đang thiếu nhóm ${g.nhomMau} ${g.heRh} (còn ${g.tonKho} ml). Bạn có cùng nhóm máu — hãy đăng ký hiến máu sớm nhất có thể!`
-              })}>Chọn</Button>
-            </div>
-          ))}
+        <Card size="small" title={<Space><HeartFilled style={{ color: '#c8102e' }} />Nhóm máu đang cạn kiệt / thiếu</Space>} style={{ background: '#fff7f8' }}
+          extra={low.length > 0 && <Tag color="red">{low.filter((g) => g.level.key === 'CanKiet').length} cạn kiệt</Tag>}>
+          {low.length === 0 ? <Alert type="success" showIcon message="Tất cả nhóm máu đều đủ ngưỡng an toàn" /> : low.map((g) => {
+            const active = v.nhomMau === g.nhomMau && v.heRh === g.heRh;
+            return (
+              <div key={g.nhomMau + g.heRh} style={{ padding: '10px 10px', margin: '0 -10px', borderBottom: '1px dashed #fecdd3', borderRadius: 8, background: active ? '#ffe4e6' : undefined }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Space>
+                    <BloodBadge nhomMau={g.nhomMau} heRh={g.heRh} />
+                    <Tag color={g.level.color} style={{ fontWeight: 600 }}>{g.level.label}</Tag>
+                    <span style={{ fontSize: 12, color: '#475569' }}>{fmtMl(g.tonKho)} / {fmtMl(g.nguongCanhBao)}</span>
+                  </Space>
+                  <Button size="small" type={active ? 'primary' : 'default'} danger={g.level.key === 'CanKiet'} onClick={() => pick(g)}>{active ? 'Đang chọn' : 'Kêu gọi'}</Button>
+                </div>
+                <Progress percent={Math.round(g.level.pct)} size="small" showInfo={false} strokeColor={g.level.key === 'CanKiet' ? '#dc2626' : '#f59e0b'} style={{ margin: '4px 0 0' }} />
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  Còn {Math.round(g.level.pct)}% ngưỡng · thiếu {fmtMl(g.nguongCanhBao - g.tonKho)} · {eligibleOf(g.nhomMau, g.heRh)} người cùng nhóm đủ điều kiện hiến
+                </Typography.Text>
+              </div>
+            );
+          })}
+          <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 8, marginBottom: 0 }}>
+            <b>Cạn kiệt</b>: tồn kho &lt; 25% ngưỡng an toàn · <b>Thiếu</b>: dưới ngưỡng an toàn (cấu hình tại trang Nhóm máu).
+          </Typography.Paragraph>
           <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 12, marginBottom: 0 }}>
             <RobotOutlined /> Hệ thống cũng tự động gửi kêu gọi (tối đa 1 lần / 3 ngày / nhóm máu) khi tồn kho xuống dưới ngưỡng.
           </Typography.Paragraph>

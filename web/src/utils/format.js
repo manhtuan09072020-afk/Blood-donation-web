@@ -44,8 +44,49 @@ export const KHO_STATUS = {
   ConKho: { label: 'Còn trong kho', color: 'green' },
   DaXuat: { label: 'Đã xuất', color: 'blue' },
   HetHan: { label: 'Hết hạn', color: 'red' },
-  HuyBo: { label: 'Đã hủy bỏ', color: 'default' }
+  HuyBo: { label: 'Đã hủy bỏ', color: 'default' },
+  DaChia: { label: 'Đã chia túi', color: 'purple' }
 };
+
+// ===== Thể tích hiến máu (Thông tư 26/2013/TT-BYT) — đồng bộ với DonationRules phía backend =====
+export const THE_TICH_CHUAN = [250, 350, 450];
+export const THE_TICH_OPTIONS = THE_TICH_CHUAN.map((v) => ({ value: v, label: `${v} ml` }));
+// Thể tích tối đa theo cân nặng (≤ 9 ml/kg; < 45 kg: 250 ml) và Hb (< 12,5 g/dL: 250 ml)
+export function maxDonationVolume(canNang, hemoglobin) {
+  if (!canNang || canNang < 42) return 0;
+  let max = Math.max(0, ...THE_TICH_CHUAN.filter((v) => v <= canNang * 9));
+  if (canNang < 45) max = Math.min(max, 250);
+  if (hemoglobin != null && hemoglobin < 12.5) max = Math.min(max, 250);
+  return max;
+}
+
+// Loại túi lấy máu quyết định các chế phẩm điều chế được
+export const LOAI_TUI = {
+  Don: { label: 'Túi đơn', desc: 'Lưu nguyên máu toàn phần', parts: ['ToanPhan'] },
+  Doi: { label: 'Túi đôi', desc: 'Ly tâm tách khối hồng cầu + huyết tương', parts: ['HongCau', 'HuyetTuong'] },
+  Ba: { label: 'Túi ba', desc: 'Tách khối hồng cầu + huyết tương + khối tiểu cầu (từ 350 ml)', parts: ['HongCau', 'HuyetTuong', 'TieuCau'] }
+};
+
+export const BAO_QUAN = {
+  ToanPhan: '2–6 °C · tủ lạnh trữ máu',
+  HongCau: '2–6 °C · tủ lạnh trữ máu',
+  HuyetTuong: '≤ −25 °C · tủ đông',
+  TieuCau: '20–24 °C · máy lắc liên tục'
+};
+
+export const MUC_DO_KHAN = {
+  Thuong: { label: 'Thường quy', color: 'default' },
+  Khan: { label: 'Khẩn', color: 'orange' },
+  CapCuu: { label: 'Cấp cứu', color: 'red' }
+};
+
+// Mức độ thiếu máu của một nhóm so với ngưỡng an toàn
+export function shortageLevel(tonKho, nguong) {
+  const pct = nguong ? (Number(tonKho) / Number(nguong)) * 100 : 100;
+  if (pct < 25) return { key: 'CanKiet', label: 'Cạn kiệt', color: 'red', pct };
+  if (pct < 100) return { key: 'Thieu', label: 'Thiếu', color: 'orange', pct };
+  return { key: 'An toan', label: 'An toàn', color: 'green', pct };
+}
 
 export const LOAI_THONG_BAO = {
   KeuGoiHienMau: { label: 'Kêu gọi hiến máu', color: 'red' },

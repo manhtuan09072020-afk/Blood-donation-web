@@ -148,6 +148,10 @@ namespace HienMauAPI.Data
                  .WithMany()
                  .HasForeignKey(x => x.NhanVienHuyId)
                  .OnDelete(DeleteBehavior.Restrict);
+                e.HasOne(x => x.KhoMauGoc)
+                 .WithMany()
+                 .HasForeignKey(x => x.KhoMauGocId)
+                 .OnDelete(DeleteBehavior.Restrict);
                 e.Property(x => x.SoLuong).HasColumnType("decimal(6,2)");
             });
 

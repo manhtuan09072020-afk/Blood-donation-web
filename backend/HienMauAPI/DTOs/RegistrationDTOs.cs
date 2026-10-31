@@ -23,12 +23,16 @@ namespace HienMauAPI.DTOs
         public string TrangThai { get; set; } = string.Empty;
         public string? GhiChu { get; set; }
         public int? KhamSangLocId { get; set; }
+        public int? TheTichDangKy { get; set; }
+        public int? TheTichChiDinh { get; set; }
+        public decimal? CanNang { get; set; }
     }
 
     public class CreateRegistrationRequest
     {
         [Required] public int DotId { get; set; }
         [MaxLength(255)] public string? GhiChu { get; set; }
+        public int? TheTichDangKy { get; set; } // 250 | 350 | 450
     }
 
     // Nhân viên đăng ký hộ người hiến đến trực tiếp tại điểm hiến máu
@@ -37,6 +41,7 @@ namespace HienMauAPI.DTOs
         [Required] public int NguoiHienId { get; set; }
         [Required] public int DotId { get; set; }
         [MaxLength(255)] public string? GhiChu { get; set; }
+        public int? TheTichDangKy { get; set; }
     }
 
     public class UpdateRegistrationStatusRequest

@@ -46,27 +46,48 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
 
   Future<void> _register() async {
     final note = TextEditingController();
+    var theTich = 350;
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 0, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Text('Xác nhận đăng ký hiến máu', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          Text('${_c!.tenDot}\n${fmtWeekday.format(_c!.ngayBatDau)} · ${_c!.tenDiem}', style: const TextStyle(color: AppColors.muted)),
-          const SizedBox(height: 16),
-          TextField(controller: note, maxLength: 255, decoration: const InputDecoration(labelText: 'Ghi chú cho ban tổ chức (không bắt buộc)')),
-          const SizedBox(height: 8),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Xác nhận đăng ký')),
-        ]),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 0, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const Text('Xác nhận đăng ký hiến máu', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            Text('${_c!.tenDot}\n${fmtWeekday.format(_c!.ngayBatDau)} · ${_c!.tenDiem}', style: const TextStyle(color: AppColors.muted)),
+            const SizedBox(height: 18),
+            const Text('Lượng máu bạn muốn hiến', style: TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            SegmentedButton<int>(
+              segments: const [
+                ButtonSegment(value: 250, label: Text('250 ml')),
+                ButtonSegment(value: 350, label: Text('350 ml')),
+                ButtonSegment(value: 450, label: Text('450 ml')),
+              ],
+              selected: {theTich},
+              showSelectedIcon: false,
+              onSelectionChanged: (s) => setSheet(() => theTich = s.first),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Bác sĩ sẽ chỉ định lượng máu được hiến khi khám sàng lọc (không quá 9 ml/kg cân nặng: dưới 45 kg hiến 250 ml, 45–49 kg tối đa 350 ml, từ 50 kg có thể hiến 450 ml).',
+              style: TextStyle(fontSize: 12, color: AppColors.muted),
+            ),
+            const SizedBox(height: 14),
+            TextField(controller: note, maxLength: 255, decoration: const InputDecoration(labelText: 'Ghi chú cho ban tổ chức (không bắt buộc)')),
+            const SizedBox(height: 8),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Xác nhận đăng ký hiến $theTich ml')),
+          ]),
+        ),
       ),
     );
     if (ok != true) return;
     setState(() => _submitting = true);
     try {
-      final reg = await Api.register(widget.campaignId, note.text.trim().isEmpty ? null : note.text.trim());
+      final reg = await Api.register(widget.campaignId, note.text.trim().isEmpty ? null : note.text.trim(), theTich);
       setState(() => _mine = reg);
       if (mounted) {
         context.read<AppState>().checkNotifications(showSystem: false);
@@ -149,7 +170,18 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                         child: Row(children: [
                           const Icon(Icons.check_circle, color: AppColors.success),
                           const SizedBox(width: 10),
-                          const Expanded(child: Text('Bạn đã đăng ký đợt này', style: TextStyle(fontWeight: FontWeight.w700))),
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                              const Text('Bạn đã đăng ký đợt này', style: TextStyle(fontWeight: FontWeight.w700)),
+                              if (_mine!.theTichDangKy != null)
+                                Text(
+                                  _mine!.theTichChiDinh != null
+                                      ? 'Bác sĩ chỉ định hiến ${_mine!.theTichChiDinh} ml'
+                                      : 'Muốn hiến ${_mine!.theTichDangKy} ml',
+                                  style: const TextStyle(fontSize: 12.5, color: AppColors.muted),
+                                ),
+                            ]),
+                          ),
                           StatusChip.registration(_mine!.trangThai),
                         ]),
                       )

@@ -20,6 +20,12 @@ namespace HienMauAPI.Entities
         [MaxLength(255)]
         public string? LyDo { get; set; }
 
+        [MaxLength(100)]
+        public string? NguoiNhan { get; set; }    // người đến nhận máu (ký biên bản giao nhận)
+
+        [MaxLength(20)]
+        public string? MucDoKhanCap { get; set; } // Thuong | Khan | CapCuu
+
         public ICollection<ChiTietXuatKho> ChiTietXuatKhos { get; set; } = new List<ChiTietXuatKho>();
     }
 }

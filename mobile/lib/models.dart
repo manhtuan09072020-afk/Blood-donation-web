@@ -80,6 +80,7 @@ class Registration {
   final int id, dotId;
   final String tenDot, tenDiem, diaChi, trangThai;
   final String? ghiChu;
+  final int? theTichDangKy, theTichChiDinh; // ml người hiến muốn / bác sĩ chỉ định
   final DateTime ngayBatDau, ngayKetThuc, ngayDangKy;
 
   Registration.fromJson(Map<String, dynamic> j)
@@ -90,6 +91,8 @@ class Registration {
         diaChi = j['diaChi'] ?? '',
         trangThai = j['trangThai'],
         ghiChu = j['ghiChu'],
+        theTichDangKy = j['theTichDangKy'],
+        theTichChiDinh = j['theTichChiDinh'],
         ngayBatDau = _date(j['ngayBatDau'])!,
         ngayKetThuc = _date(j['ngayKetThuc'])!,
         ngayDangKy = _date(j['ngayDangKy'])!;

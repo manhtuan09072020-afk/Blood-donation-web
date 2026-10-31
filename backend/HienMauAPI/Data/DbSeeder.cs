@@ -30,6 +30,30 @@ IF COL_LENGTH('KhoMau', 'LyDoHuy') IS NULL
         LyDoHuy NVARCHAR(255) NULL,
         NgayHuy DATETIME NULL,
         NhanVienHuyId INT NULL CONSTRAINT FK_KhoMau_NhanVienHuy REFERENCES NhanVien(Id);");
+
+                // Thể tích đăng ký / chỉ định, loại túi, chia túi, thông tin giao nhận phiếu xuất
+                await db.Database.ExecuteSqlRawAsync(@"
+IF COL_LENGTH('DangKyHienMau', 'TheTichDangKy') IS NULL
+    ALTER TABLE DangKyHienMau ADD TheTichDangKy INT NULL CONSTRAINT CK_DangKy_TheTich CHECK (TheTichDangKy IN (250, 350, 450));
+IF COL_LENGTH('KhamSangLoc', 'TheTichChiDinh') IS NULL
+    ALTER TABLE KhamSangLoc ADD TheTichChiDinh INT NULL CONSTRAINT CK_KhamSangLoc_TheTich CHECK (TheTichChiDinh IN (250, 350, 450));
+IF COL_LENGTH('TiepNhanMau', 'LoaiTui') IS NULL
+    ALTER TABLE TiepNhanMau ADD LoaiTui NVARCHAR(10) NULL CONSTRAINT CK_TiepNhan_LoaiTui CHECK (LoaiTui IN (N'Don', N'Doi', N'Ba'));
+IF COL_LENGTH('PhieuXuatKho', 'NguoiNhan') IS NULL
+    ALTER TABLE PhieuXuatKho ADD NguoiNhan NVARCHAR(100) NULL,
+        MucDoKhanCap NVARCHAR(20) NULL CONSTRAINT CK_PhieuXuat_MucDo CHECK (MucDoKhanCap IN (N'Thuong', N'Khan', N'CapCuu'));
+IF COL_LENGTH('KhoMau', 'KhoMauGocId') IS NULL
+    ALTER TABLE KhoMau ADD KhoMauGocId INT NULL CONSTRAINT FK_KhoMau_Goc REFERENCES KhoMau(Id);");
+
+                // Trạng thái mới 'DaChia' cho túi gốc đã chia: thay ràng buộc CHECK cũ
+                await db.Database.ExecuteSqlRawAsync(@"
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_KhoMau_TrangThai'
+           AND definition NOT LIKE '%DaChia%')
+BEGIN
+    ALTER TABLE KhoMau DROP CONSTRAINT CK_KhoMau_TrangThai;
+    ALTER TABLE KhoMau ADD CONSTRAINT CK_KhoMau_TrangThai
+        CHECK (TrangThai IN (N'ConKho', N'DaXuat', N'HetHan', N'HuyBo', N'DaChia'));
+END");
             }
 
             // 1. Thay mật khẩu giả bằng mật khẩu mặc định đã băm

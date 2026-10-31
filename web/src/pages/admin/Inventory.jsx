@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { App, Badge, Button, Card, Col, Descriptions, Form, Input, Modal, Popconfirm, Progress, Row, Segmented, Select, Space, Table, Tabs, Tag, Tooltip, Typography, Alert, List } from 'antd';
-import { SearchOutlined, EnvironmentOutlined, DeleteOutlined, ExportOutlined, DownloadOutlined, WarningOutlined, NotificationOutlined, StopOutlined, ClearOutlined } from '@ant-design/icons';
+import { App, Badge, Button, Card, Col, Descriptions, Form, Input, InputNumber, Modal, Popconfirm, Progress, Row, Segmented, Select, Space, Table, Tabs, Tag, Tooltip, Typography, Alert, List } from 'antd';
+import { SearchOutlined, EnvironmentOutlined, DeleteOutlined, ExportOutlined, DownloadOutlined, WarningOutlined, NotificationOutlined, StopOutlined, ClearOutlined, ScissorOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { inventoryApi, catalogApi } from '../../api';
 import { useAuth, ROLES } from '../../context/AuthContext';
 import { BloodBadge, PageHeader, UnitStatusTag } from '../../components/common';
-import { fmtDate, fmtDateTime, fmtMl, THANH_PHAN, NHOM_MAU_OPTIONS, RH_OPTIONS, KHO_STATUS, bloodLabel, thanhPhanLabel } from '../../utils/format';
-import { exportCsv } from '../../utils/exportCsv';
+import { fmtDate, fmtDateTime, fmtMl, THANH_PHAN, NHOM_MAU_OPTIONS, RH_OPTIONS, KHO_STATUS, BAO_QUAN, bloodLabel, thanhPhanLabel } from '../../utils/format';
+import { exportExcel } from '../../utils/exportExcel';
 
 const SO_NGAY_CANH_BAO = 7;
 const LY_DO_HUY = [
@@ -39,6 +39,61 @@ function StatusCell({ u }) {
         <Typography.Text type="secondary" style={{ fontSize: 12 }} ellipsis>{u.lyDoHuy}</Typography.Text>
       </Space>
     </Tooltip>
+  );
+}
+
+// Chia túi vô trùng: 1 túi chế phẩm -> 2-4 túi nhỏ (bệnh nhi cần lượng ít), hệ kín nên giữ nguyên hạn dùng
+function SplitModal({ unit, onClose, onDone }) {
+  const { message } = App.useApp();
+  const [vols, setVols] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (unit) { const half = Math.floor(Number(unit.soLuong) / 2 / 5) * 5; setVols([half, half]); }
+  }, [unit]);
+
+  const total = vols.reduce((a, v) => a + (v || 0), 0);
+  const setCount = (n) => { const each = Math.floor(Number(unit.soLuong) / n / 5) * 5; setVols(Array(n).fill(each)); };
+
+  const submit = async () => {
+    setSaving(true);
+    try { const res = await inventoryApi.split(unit.id, vols); message.success(res.message); onDone(); }
+    catch (e) { message.error(e.message); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Modal open={!!unit} onCancel={onClose} onOk={submit} confirmLoading={saving} destroyOnHidden width={620}
+      okButtonProps={{ disabled: total > Number(unit?.soLuong || 0) || vols.some((v) => !v || v < 20) }}
+      title={<><ScissorOutlined /> Chia túi vô trùng — {unit?.maLoMau}</>} okText="Xác nhận chia túi" cancelText="Đóng">
+      {unit && (
+        <>
+          <Alert type="info" showIcon style={{ marginBottom: 12 }}
+            message="Dùng khi cơ sở y tế cần lượng nhỏ hơn một túi (thường cho bệnh nhi)"
+            description="Túi được chia bằng thiết bị hàn nối vô trùng sang các túi con trong hệ kín, nên túi nhỏ giữ nguyên nhóm máu, chế phẩm và hạn sử dụng. Mỗi túi nhỏ có mã riêng (mã túi gốc + -A, -B…) để truy vết; túi gốc chuyển sang trạng thái “Đã chia túi”." />
+          <Descriptions size="small" column={3} bordered style={{ marginBottom: 12 }} styles={{ label: { whiteSpace: 'nowrap' } }}>
+            <Descriptions.Item label="Nhóm"><BloodBadge nhomMau={unit.nhomMau} heRh={unit.heRh} /></Descriptions.Item>
+            <Descriptions.Item label="Chế phẩm">{thanhPhanLabel(unit.thanhPhanMau)}</Descriptions.Item>
+            <Descriptions.Item label="Thể tích"><b>{fmtMl(unit.soLuong)}</b></Descriptions.Item>
+          </Descriptions>
+          <Space style={{ marginBottom: 12 }}>
+            <span>Số túi nhỏ:</span>
+            <Segmented value={vols.length} onChange={setCount} options={[2, 3, 4]} />
+          </Space>
+          {vols.map((v, i) => (
+            <Space key={i} style={{ display: 'flex', marginBottom: 8 }}>
+              <Typography.Text code style={{ width: 190, display: 'inline-block' }}>{unit.maLoMau}-{String.fromCharCode(65 + i)}</Typography.Text>
+              <InputNumber min={20} max={Number(unit.soLuong)} step={5} value={v} suffix="ml" style={{ width: 130 }}
+                onChange={(x) => setVols(vols.map((y, j) => (j === i ? x : y)))} />
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>HSD {fmtDate(unit.hanSuDung)}</Typography.Text>
+            </Space>
+          ))}
+          <Typography.Text type={total > Number(unit.soLuong) ? 'danger' : 'secondary'}>
+            Tổng {total} / {Number(unit.soLuong)} ml{total <= Number(unit.soLuong) && ` · phần dư ${Number(unit.soLuong) - total} ml lưu theo túi cuối hoặc hao hụt dây nối`}
+          </Typography.Text>
+        </>
+      )}
+    </Modal>
   );
 }
 
@@ -113,13 +168,15 @@ export default function Inventory() {
   const [locUnit, setLocUnit] = useState(null);
   const [locValue, setLocValue] = useState('');
   const [discardUnit, setDiscardUnit] = useState(null);
+  const [splitUnit, setSplitUnit] = useState(null);
+  const { user } = useAuth();
   const [expired, setExpired] = useState([]);
   const [bulkBusy, setBulkBusy] = useState(false);
   const soNgayCanhBao = alerts?.soNgayCanhBao ?? SO_NGAY_CANH_BAO;
 
   const loadUnits = () => {
     setLoading(true);
-    const trangThai = ['ConKho', 'DaXuat', 'HuyBo'].includes(f.view) ? f.view : undefined;
+    const trangThai = ['ConKho', 'DaXuat', 'HuyBo', 'DaChia'].includes(f.view) ? f.view : undefined;
     inventoryApi.getUnits({ nhomMau: f.nhomMau, heRh: f.heRh, thanhPhan: f.thanhPhan, trangThai })
       .then((list) => setUnits(f.view === 'CanXuLy' ? list.filter((u) => isExpired(u) || isExpiring(u, soNgayCanhBao)) : list))
       .finally(() => setLoading(false));
@@ -165,11 +222,20 @@ export default function Inventory() {
   }, [summary, groups]);
 
   const unitColumns = [
-    { title: 'Mã đơn vị', dataIndex: 'maLoMau', fixed: 'left', width: 190, render: (v) => <Typography.Text strong copyable style={{ whiteSpace: 'nowrap' }}>{v}</Typography.Text> },
+    {
+      title: 'Mã đơn vị', dataIndex: 'maLoMau', fixed: 'left', width: 200, render: (v, u) => (
+        <>
+          <Typography.Text strong copyable style={{ whiteSpace: 'nowrap' }}>{v}</Typography.Text>
+          <div style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 180 }}>
+            {u.maLoMauGoc ? <>Chia từ túi {u.maLoMauGoc}</> : <>Túi gốc {u.maTuiMau}{u.hoTenNguoiHien ? ` · ${u.hoTenNguoiHien}` : ''}</>}
+          </div>
+        </>
+      )
+    },
     { title: 'Nhóm máu', width: 95, render: (_, u) => <BloodBadge nhomMau={u.nhomMau} heRh={u.heRh} /> },
-    { title: 'Thành phần', dataIndex: 'thanhPhanMau', width: 140, render: (v) => <Tag color={THANH_PHAN[v]?.color}>{thanhPhanLabel(v)}</Tag> },
+    { title: 'Thành phần', dataIndex: 'thanhPhanMau', width: 150, render: (v) => <Tooltip title={`Bảo quản: ${BAO_QUAN[v]}`}><Tag color={THANH_PHAN[v]?.color}>{thanhPhanLabel(v)}</Tag></Tooltip> },
     { title: 'Số lượng', dataIndex: 'soLuong', width: 110, align: 'right', render: (v) => <b>{fmtMl(v)}</b>, sorter: (a, b) => a.soLuong - b.soLuong },
-    { title: 'Ngày nhập', dataIndex: 'ngayNhap', width: 120, render: fmtDate, sorter: (a, b) => dayjs(a.ngayNhap) - dayjs(b.ngayNhap) },
+    { title: 'Ngày tiếp nhận', dataIndex: 'ngayNhap', width: 130, render: fmtDate, sorter: (a, b) => dayjs(a.ngayNhap) - dayjs(b.ngayNhap) },
     { title: 'Hạn sử dụng', dataIndex: 'hanSuDung', width: 140, render: (_, u) => <ExpiryTag u={u} />, sorter: (a, b) => dayjs(a.hanSuDung) - dayjs(b.hanSuDung), defaultSortOrder: 'ascend' },
     { title: 'Vị trí lưu trữ', dataIndex: 'viTriLuuTru', width: 230, render: (v) => v ? <span><EnvironmentOutlined /> {v}</span> : <Typography.Text type="secondary">Chưa xếp</Typography.Text> },
     { title: 'Trạng thái', dataIndex: 'trangThai', width: 150, render: (_, u) => <StatusCell u={u} /> },
@@ -183,6 +249,9 @@ export default function Inventory() {
         return (
           <Space size={6}>
             <Tooltip title="Đổi vị trí lưu trữ"><Button size="small" icon={<EnvironmentOutlined />} onClick={() => { setLocUnit(u); setLocValue(u.viTriLuuTru || ''); }} /></Tooltip>
+            {u.thanhPhanMau !== 'ToanPhan' && !u.khoMauGocId && (
+              <Tooltip title="Chia túi vô trùng (cấp lượng nhỏ cho bệnh nhi)"><Button size="small" icon={<ScissorOutlined />} onClick={() => setSplitUnit(u)} /></Tooltip>
+            )}
             {expiring
               ? <Tooltip title="Sắp hết hạn: ưu tiên xuất trước, hoặc hủy nếu không kịp sử dụng"><Button size="small" danger icon={<DeleteOutlined />} onClick={() => setDiscardUnit(u)}>Hủy bỏ</Button></Tooltip>
               : <Tooltip title="Hủy bỏ (túi vỡ, nhiễm khuẩn, không đạt xét nghiệm…)"><Button size="small" danger type="text" icon={<DeleteOutlined />} onClick={() => setDiscardUnit(u)} /></Tooltip>}
@@ -207,12 +276,27 @@ export default function Inventory() {
     <>
       <PageHeader title="Kho máu" subtitle="Quản lý tồn kho theo nhóm máu, thành phần, số lượng, hạn sử dụng và vị trí lưu trữ"
         extra={<>
-          <Button icon={<DownloadOutlined />} onClick={() => exportCsv(`ton-kho-${dayjs().format('YYYYMMDD')}`, [
-            { title: 'Mã đơn vị', value: 'maLoMau' }, { title: 'Nhóm máu', value: (u) => bloodLabel(u.nhomMau, u.heRh) },
-            { title: 'Thành phần', value: (u) => thanhPhanLabel(u.thanhPhanMau) }, { title: 'Số lượng (ml)', value: 'soLuong' },
-            { title: 'Ngày nhập', value: (u) => fmtDate(u.ngayNhap) }, { title: 'Hạn sử dụng', value: (u) => fmtDate(u.hanSuDung) },
-            { title: 'Vị trí', value: 'viTriLuuTru' }, { title: 'Trạng thái', value: (u) => KHO_STATUS[u.trangThai]?.label }
-          ], shown)}>Xuất CSV</Button>
+          <Button icon={<DownloadOutlined />} onClick={() => exportExcel({
+            fileName: 'danh-sach-don-vi-mau', title: 'Danh sách đơn vị máu trong kho', sheetName: 'Đơn vị máu', signer: user?.hoTen,
+            subtitle: `Lọc: ${({ ConKho: 'Còn trong kho', CanXuLy: 'Cần xử lý (sắp hết hạn / hết hạn)', DaXuat: 'Đã xuất', HuyBo: 'Đã hủy', DaChia: 'Đã chia túi', TatCa: 'Tất cả' })[f.view]}`
+              + (f.nhomMau ? ` · Nhóm ${bloodLabel(f.nhomMau, f.heRh)}` : '') + (f.thanhPhan ? ` · ${thanhPhanLabel(f.thanhPhan)}` : ''),
+            summary: [
+              { label: 'Số đơn vị', value: shown.length },
+              { label: 'Tổng thể tích', value: totalMl, type: 'ml' },
+              { label: 'Sắp hết hạn (≤ 7 ngày)', value: shown.filter((u) => isExpiring(u, soNgayCanhBao)).length, color: 'FFD97706' },
+              { label: 'Đã hết hạn', value: shown.filter(isExpired).length, color: 'FFDC2626' }
+            ],
+            columns: [
+              { title: 'Mã đơn vị', value: 'maLoMau' }, { title: 'Mã túi gốc', value: (u) => u.maLoMauGoc || u.maTuiMau },
+              { title: 'Nhóm máu', value: (u) => bloodLabel(u.nhomMau, u.heRh), align: 'center' },
+              { title: 'Chế phẩm', value: (u) => thanhPhanLabel(u.thanhPhanMau) }, { title: 'Thể tích', value: 'soLuong', type: 'ml', total: 'sum' },
+              { title: 'Ngày tiếp nhận', value: 'ngayNhap', type: 'date' }, { title: 'Hạn sử dụng', value: 'hanSuDung', type: 'date' },
+              { title: 'Còn lại (ngày)', value: (u) => (u.trangThai === 'ConKho' || u.trangThai === 'HetHan' ? u.soNgayConLai : null), type: 'number' },
+              { title: 'Điều kiện bảo quản', value: (u) => BAO_QUAN[u.thanhPhanMau] }, { title: 'Vị trí lưu trữ', value: 'viTriLuuTru' },
+              { title: 'Trạng thái', value: (u) => KHO_STATUS[u.trangThai]?.label + (u.lyDoHuy ? ` (${u.lyDoHuy})` : '') }
+            ],
+            rows: shown
+          })}>Xuất Excel</Button>
           {canManage && <Button type="primary" icon={<ExportOutlined />} onClick={() => navigate('/admin/issues')}>Lập phiếu xuất kho</Button>}
         </>} />
 
@@ -249,6 +333,7 @@ export default function Inventory() {
                     { value: 'CanXuLy', label: <span>Cần xử lý <Badge count={canXuLyCount} size="small" style={{ marginLeft: 4 }} /></span> },
                     { value: 'DaXuat', label: 'Đã xuất' },
                     { value: 'HuyBo', label: 'Đã hủy' },
+                    { value: 'DaChia', label: 'Đã chia túi' },
                     { value: 'TatCa', label: 'Tất cả' }
                   ]} />
                   {f.view === 'CanXuLy' && bulkButton}
@@ -326,6 +411,7 @@ export default function Inventory() {
         ]} />
       </Card>
 
+      <SplitModal unit={splitUnit} onClose={() => setSplitUnit(null)} onDone={() => { setSplitUnit(null); reloadAll(); }} />
       <DiscardModal unit={discardUnit} onClose={() => setDiscardUnit(null)} onDone={() => { setDiscardUnit(null); reloadAll(); }} />
 
       <Modal title={`Vị trí lưu trữ — ${locUnit?.maLoMau}`} open={!!locUnit} onCancel={() => setLocUnit(null)} onOk={saveLocation} okText="Lưu" cancelText="Hủy">

@@ -1,5 +1,6 @@
 using HienMauAPI.DTOs;
 using HienMauAPI.Entities;
+using HienMauAPI.Helpers;
 using HienMauAPI.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -87,7 +88,51 @@ namespace HienMauAPI.Tests
             Assert.Equal(soon.Id, result.ChiTiet[0].Lo.Id);
             Assert.Equal(250m, result.ChiTiet[0].SoLuongXuat);
             Assert.Equal(late.Id, result.ChiTiet[1].Lo.Id);
-            Assert.Equal(150m, result.ChiTiet[1].SoLuongXuat);
+            Assert.Equal(350m, result.ChiTiet[1].SoLuongXuat); // xuất nguyên túi
+            Assert.Equal(600m, result.SoLuongDapUng);
+        }
+
+        [Fact]
+        public async Task Suggest_RedCells_CanUseCompatibleGroup_OnlyWhenAllowed()
+        {
+            using var db = TestDb.Create();
+            var (staffId, donorId, dotId) = TestDb.SeedBasics(db);
+            var oPos = TestDb.AddBloodUnit(db, staffId, donorId, dotId, soLuong: 250m); // O Rh+
+            oPos.ThanhPhanMau = ThanhPhanMauNames.HongCau;
+            db.SaveChanges();
+            var service = new InventoryService(db);
+
+            var strict = await service.SuggestAsync("A", "Rh+", ThanhPhanMauNames.HongCau, 250m);
+            var allowed = await service.SuggestAsync("A", "Rh+", ThanhPhanMauNames.HongCau, 250m, choPhepThayThe: true);
+            var rhNeg = await service.SuggestAsync("A", "Rh-", ThanhPhanMauNames.HongCau, 250m, choPhepThayThe: true);
+
+            Assert.False(strict.DuSoLuong);
+            Assert.True(allowed.DuSoLuong);
+            Assert.True(allowed.ChiTiet.Single().Lo.LaThayThe);
+            Assert.False(rhNeg.DuSoLuong); // người nhận Rh- không nhận hồng cầu Rh+
+        }
+
+        [Fact]
+        public void CompatibleGroups_FollowTransfusionRules()
+        {
+            var rbcForO = InventoryService.NhomTuongThich("O", "Rh-", ThanhPhanMauNames.HongCau);
+            var plasmaForA = InventoryService.NhomTuongThich("A", "Rh+", ThanhPhanMauNames.HuyetTuong);
+            var wholeBlood = InventoryService.NhomTuongThich("A", "Rh+", ThanhPhanMauNames.ToanPhan);
+
+            Assert.Empty(rbcForO); // O- chỉ nhận O-
+            Assert.All(plasmaForA, g => Assert.Contains(g.NhomMau, new[] { "A", "AB" }));
+            Assert.Empty(wholeBlood); // máu toàn phần phải cùng nhóm
+        }
+
+        [Theory]
+        [InlineData(44, 13.5, 250)]
+        [InlineData(47, 13.5, 350)]
+        [InlineData(55, 13.5, 450)]
+        [InlineData(55, 12.2, 250)] // Hb < 12,5 g/dL chỉ được hiến 250 ml
+        [InlineData(40, 13.5, 0)]
+        public void MaxDonationVolume_DependsOnWeightAndHemoglobin(double canNang, double hb, int expected)
+        {
+            Assert.Equal(expected, DonationRules.TheTichToiDaChoPhep((decimal)canNang, (decimal)hb));
         }
 
         [Fact]
@@ -183,6 +228,49 @@ namespace HienMauAPI.Tests
 
             Assert.False(success);
             Assert.Equal(0, await db.KhamSangLocs.CountAsync());
+        }
+
+        [Theory]
+        [InlineData(null, false)] // Đạt nhưng bác sĩ chưa chỉ định thể tích
+        [InlineData(450, false)]  // 46 kg chỉ được tối đa 350 ml
+        [InlineData(300, false)]  // không phải thể tích chuẩn
+        [InlineData(350, true)]
+        public async Task Screening_Pass_RequiresValidPrescribedVolume(int? theTich, bool expected)
+        {
+            using var db = TestDb.Create();
+            var (staffId, donorId, dotId) = TestDb.SeedBasics(db);
+            var reg = new DangKyHienMau { NguoiHienId = donorId, DotId = dotId, TrangThai = TrangThaiDangKy.DaDuyet, TheTichDangKy = 450 };
+            db.DangKyHienMaus.Add(reg);
+            db.SaveChanges();
+            var service = new ScreeningService(db);
+
+            var (success, error, data) = await service.CreateAsync(staffId, new CreateScreeningRequest
+            {
+                DangKyId = reg.Id, CanNang = 46m, Hemoglobin = 13.5m, HuyetAp = "120/80", KetQua = "Dat", TheTichChiDinh = theTich
+            });
+
+            Assert.Equal(expected, success);
+            if (expected)
+            {
+                Assert.Equal(350, data!.TheTichChiDinh);
+                Assert.Equal(450, data.TheTichDangKy);
+            }
+            else Assert.False(string.IsNullOrEmpty(error));
+        }
+
+        [Fact]
+        public async Task Registration_DesiredVolume_MustBeStandard()
+        {
+            using var db = TestDb.Create();
+            var (_, donorId, dotId) = TestDb.SeedBasics(db);
+            var service = new RegistrationService(db);
+
+            var (bad, _, _) = await service.CreateAsync(donorId, new CreateRegistrationRequest { DotId = dotId, TheTichDangKy = 500 });
+            var (ok, error, data) = await service.CreateAsync(donorId, new CreateRegistrationRequest { DotId = dotId, TheTichDangKy = 350 });
+
+            Assert.False(bad);
+            Assert.True(ok, error);
+            Assert.Equal(350, data!.TheTichDangKy);
         }
 
         [Fact]

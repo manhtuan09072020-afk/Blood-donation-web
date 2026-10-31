@@ -31,10 +31,21 @@ namespace HienMauAPI.Controllers
 
         [HttpGet("suggest")]
         [Authorize(Roles = KhoRoles)]
-        public async Task<IActionResult> Suggest([FromQuery] string nhomMau, [FromQuery] string heRh, [FromQuery] string thanhPhan, [FromQuery] decimal soLuong)
+        public async Task<IActionResult> Suggest([FromQuery] string nhomMau, [FromQuery] string heRh, [FromQuery] string thanhPhan,
+            [FromQuery] decimal soLuong, [FromQuery] bool choPhepThayThe = false)
         {
             if (soLuong <= 0) return BadRequest(new { message = "Số lượng yêu cầu phải lớn hơn 0." });
-            return Ok(await _inventoryService.SuggestAsync(nhomMau, heRh, thanhPhan, soLuong));
+            return Ok(await _inventoryService.SuggestAsync(nhomMau, heRh, thanhPhan, soLuong, choPhepThayThe));
+        }
+
+        // Chia túi vô trùng (bệnh nhi cần lượng nhỏ): 1 túi -> 2-4 túi nhỏ
+        [HttpPost("units/{id:int}/split")]
+        [Authorize(Roles = KhoRoles)]
+        public async Task<IActionResult> Split(int id, [FromBody] SplitUnitRequest request)
+        {
+            var (success, error, data) = await _inventoryService.SplitAsync(id, request.TheTichs);
+            if (!success) return BadRequest(new { message = error });
+            return Ok(new { message = $"Đã chia thành {data!.Count} túi nhỏ.", donVi = data });
         }
 
         [HttpPost("issue")]

@@ -172,7 +172,8 @@ namespace HienMauAPI.Data
             {
                 var ngayDk = dot.NgayBatDau.AddDays(-rnd.Next(2, 18)).AddHours(rnd.Next(0, 10));
                 if (ngayDk < d.NgayDangKy) ngayDk = d.NgayDangKy.AddHours(2);
-                var reg = new DangKyHienMau { NguoiHienId = d.Id, DotId = dot.Id, NgayDangKy = ngayDk, TrangThai = trangThai, GhiChu = ghiChu };
+                var muonHien = DonationRules.TheTichChuan[rnd.Next(100) < 20 ? 0 : rnd.Next(100) < 60 ? 1 : 2];
+                var reg = new DangKyHienMau { NguoiHienId = d.Id, DotId = dot.Id, NgayDangKy = ngayDk, TrangThai = trangThai, GhiChu = ghiChu, TheTichDangKy = muonHien };
                 db.DangKyHienMaus.Add(reg);
                 await db.SaveChangesAsync();
                 return reg;
@@ -193,6 +194,8 @@ namespace HienMauAPI.Data
                     KetQua = dat ? "Dat" : "KhongDat",
                     LyDoKhongDat = dat ? null : LyDoKhongDat[rnd.Next(LyDoKhongDat.Length)]
                 };
+                // Bác sĩ chỉ định: không vượt mức tối đa theo cân nặng/Hb, ưu tiên theo mong muốn của người hiến
+                if (dat) k.TheTichChiDinh = Math.Min(reg.TheTichDangKy ?? 350, Math.Max(250, DonationRules.TheTichToiDaChoPhep(d.CanNang ?? 55m, k.Hemoglobin)));
                 db.KhamSangLocs.Add(k);
                 await db.SaveChangesAsync();
                 return k;
@@ -202,14 +205,18 @@ namespace HienMauAPI.Data
             {
                 if (d.NhomMau == null) { var (n, r) = PickBloodType(); d.NhomMau = n; d.HeRh = r; }
 
-                var roll = rnd.Next(100);
-                decimal theTich = roll < 20 ? 250 : roll < 70 ? 350 : 450;
-                var t = new TiepNhanMau { KhamSangLocId = k.Id, NhanVienId = tiepNhan.Id, NgayLayMau = at, TheTich = theTich };
+                decimal theTich = k.TheTichChiDinh ?? 350;
+                var tachThanhPhan = rnd.Next(100) >= 45;
+                var t = new TiepNhanMau
+                {
+                    KhamSangLocId = k.Id, NhanVienId = tiepNhan.Id, NgayLayMau = at, TheTich = theTich,
+                    LoaiTui = !tachThanhPhan ? LoaiTuiMau.Don : theTich >= 350 ? LoaiTuiMau.Ba : LoaiTuiMau.Doi
+                };
                 db.TiepNhanMaus.Add(t);
                 await db.SaveChangesAsync();
 
                 var parts = new List<(string tp, decimal ml)>();
-                if (rnd.Next(100) < 45) parts.Add((ThanhPhanMauNames.ToanPhan, theTich));
+                if (!tachThanhPhan) parts.Add((ThanhPhanMauNames.ToanPhan, theTich));
                 else
                 {
                     parts.Add((ThanhPhanMauNames.HongCau, Math.Round(theTich * 0.55m / 10) * 10));
@@ -360,7 +367,6 @@ namespace HienMauAPI.Data
                     foreach (var u in chunk)
                     {
                         phieu.ChiTietXuatKhos.Add(new ChiTietXuatKho { KhoMau = u, SoLuong = u.SoLuong });
-                        u.SoLuong = 0;
                         u.TrangThai = TrangThaiKhoMau.DaXuat;
                     }
                     db.PhieuXuatKhos.Add(phieu);

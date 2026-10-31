@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { App, Button, Card, Form, Input, Modal, Segmented, Select, Space, Table, Typography, Tooltip } from 'antd';
+import { App, Button, Card, Form, Input, Modal, Radio, Segmented, Select, Space, Table, Tag, Typography, Tooltip } from 'antd';
 import { CheckOutlined, CloseOutlined, SearchOutlined, UserAddOutlined, DownloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { registrationApi, campaignApi, donorApi } from '../../api';
 import { useAuth, ROLES } from '../../context/AuthContext';
 import { BloodBadge, PageHeader, RegistrationStatusTag } from '../../components/common';
-import { DANG_KY_STATUS, fmtDateTime, ageOf, bloodLabel } from '../../utils/format';
-import { exportCsv } from '../../utils/exportCsv';
+import { DANG_KY_STATUS, fmtDateTime, ageOf, bloodLabel, THE_TICH_OPTIONS } from '../../utils/format';
+import { exportExcel } from '../../utils/exportExcel';
 import CreateDonorModal from '../../components/CreateDonorModal';
 
 export default function Registrations() {
   const { message } = App.useApp();
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const [params, setParams] = useSearchParams();
   const [data, setData] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
@@ -92,11 +92,23 @@ export default function Registrations() {
     <>
       <PageHeader title="Đăng ký hiến máu" subtitle="Duyệt đăng ký trực tuyến và tiếp đón người hiến đến trực tiếp"
         extra={<>
-          <Button icon={<DownloadOutlined />} onClick={() => exportCsv('dang-ky-hien-mau', [
-            { title: 'Người hiến', value: 'hoTenNguoiHien' }, { title: 'CCCD', value: 'cccd' }, { title: 'SĐT', value: 'soDienThoai' },
-            { title: 'Nhóm máu', value: (r) => bloodLabel(r.nhomMau, r.heRh) }, { title: 'Đợt', value: 'tenDot' },
-            { title: 'Ngày đăng ký', value: (r) => fmtDateTime(r.ngayDangKy) }, { title: 'Trạng thái', value: (r) => DANG_KY_STATUS[r.trangThai]?.label }
-          ], shown)}>Xuất CSV</Button>
+          <Button icon={<DownloadOutlined />} onClick={() => exportExcel({
+            fileName: 'dang-ky-hien-mau', title: 'Danh sách đăng ký hiến máu', sheetName: 'Đăng ký', signer: user?.hoTen,
+            subtitle: dotId ? `Đợt: ${campaigns.find((c) => c.id === dotId)?.tenDot || ''}` : 'Tất cả đợt hiến máu',
+            summary: [
+              { label: 'Tổng số đăng ký', value: shown.length },
+              { label: 'Chờ duyệt', value: shown.filter((r) => r.trangThai === 'ChoDuyet').length, color: 'FFD97706' },
+              { label: 'Đã hiến máu', value: shown.filter((r) => r.trangThai === 'DaHienMau').length, color: 'FF16A34A' },
+              { label: 'Tổng thể tích đăng ký', value: shown.reduce((a, r) => a + (r.theTichDangKy || 0), 0), type: 'ml' }
+            ],
+            columns: [
+              { title: 'Họ tên người hiến', value: 'hoTenNguoiHien' }, { title: 'CCCD', value: 'cccd' }, { title: 'Số điện thoại', value: 'soDienThoai' },
+              { title: 'Nhóm máu', value: (r) => bloodLabel(r.nhomMau, r.heRh), align: 'center' }, { title: 'Đợt hiến máu', value: 'tenDot' },
+              { title: 'Ngày đăng ký', value: 'ngayDangKy', type: 'datetime' }, { title: 'Muốn hiến', value: 'theTichDangKy', type: 'ml', total: 'sum' },
+              { title: 'BS chỉ định', value: 'theTichChiDinh', type: 'ml' }, { title: 'Trạng thái', value: (r) => DANG_KY_STATUS[r.trangThai]?.label }
+            ],
+            rows: shown
+          })}>Xuất Excel</Button>
           {canApprove && <Button type="primary" icon={<UserAddOutlined />} onClick={() => { walkForm.setFieldsValue({ dotId: dotId || activeCampaigns.find((c) => c.trangThai === 'DangDienRa')?.id }); setWalkIn(true); }}>Đăng ký tại điểm</Button>}
         </>} />
 
@@ -126,6 +138,14 @@ export default function Registrations() {
             { title: 'Nhóm máu', width: 100, render: (_, r) => <BloodBadge nhomMau={r.nhomMau} heRh={r.heRh} /> },
             { title: 'Đợt hiến máu', dataIndex: 'tenDot', render: (v, r) => <>{v}<div style={{ color: '#64748b', fontSize: 12 }}>{fmtDateTime(r.ngayBatDau)}</div></> },
             { title: 'Ngày đăng ký', dataIndex: 'ngayDangKy', width: 150, render: fmtDateTime, sorter: (a, b) => dayjs(a.ngayDangKy) - dayjs(b.ngayDangKy) },
+            {
+              title: 'Thể tích', width: 130, render: (_, r) => (
+                <Space direction="vertical" size={0}>
+                  <span style={{ fontSize: 12 }}>Muốn hiến: <b>{r.theTichDangKy ? `${r.theTichDangKy} ml` : '—'}</b></span>
+                  {r.theTichChiDinh && <Tag color="red" bordered={false} style={{ marginTop: 2 }}>BS chỉ định {r.theTichChiDinh} ml</Tag>}
+                </Space>
+              )
+            },
             { title: 'Trạng thái', dataIndex: 'trangThai', width: 170, render: (v, r) => <Tooltip title={r.ghiChu}><span><RegistrationStatusTag value={v} /></span></Tooltip> },
             {
               title: '', width: 170, fixed: 'right', render: (_, r) => canApprove && (
@@ -157,6 +177,10 @@ export default function Registrations() {
           </Typography.Paragraph>
           <Form.Item name="dotId" label="Đợt hiến máu" rules={[{ required: true, message: 'Chọn đợt' }]}>
             <Select options={activeCampaigns.map((c) => ({ value: c.id, label: `${dayjs(c.ngayBatDau).format('DD/MM')} · ${c.tenDot}` }))} />
+          </Form.Item>
+          <Form.Item name="theTichDangKy" label="Lượng máu người hiến muốn hiến" initialValue={350}
+            extra="Bác sĩ sẽ chỉ định lượng thực tế khi khám sàng lọc (không quá 9 ml/kg cân nặng).">
+            <Radio.Group optionType="button" buttonStyle="solid" options={THE_TICH_OPTIONS} />
           </Form.Item>
           <Form.Item name="ghiChu" label="Ghi chú"><Input /></Form.Item>
         </Form>

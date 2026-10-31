@@ -38,7 +38,9 @@ namespace HienMauAPI.Services
                 LyDoKhongDat = k.LyDoKhongDat,
                 GhiChu = k.GhiChu,
                 NhanVienKham = k.NhanVien!.HoTen,
-                DaTiepNhan = k.TiepNhanMau != null
+                DaTiepNhan = k.TiepNhanMau != null,
+                TheTichDangKy = k.DangKyHienMau!.TheTichDangKy,
+                TheTichChiDinh = k.TheTichChiDinh
             });
 
         public async Task<List<ScreeningDto>> GetAllAsync(int? dotId, string? ketQua)
@@ -102,6 +104,14 @@ namespace HienMauAPI.Services
                     return (false, "Mạch ngoài khoảng 50-100 lần/phút không đủ điều kiện. Hãy chọn kết quả 'Không đạt'.", null);
                 var bpError = ValidateBloodPressure(request.HuyetAp);
                 if (bpError != null) return (false, bpError + " Hãy chọn kết quả 'Không đạt'.", null);
+
+                // Bác sĩ chỉ định thể tích được lấy: 250/350/450 ml, không vượt mức tối đa theo cân nặng và Hb
+                if (!request.TheTichChiDinh.HasValue || !DonationRules.LaTheTichChuan(request.TheTichChiDinh.Value))
+                    return (false, "Vui lòng chỉ định thể tích được hiến (250, 350 hoặc 450 ml).", null);
+                var toiDa = DonationRules.TheTichToiDaChoPhep(request.CanNang.Value, request.Hemoglobin);
+                if (request.TheTichChiDinh.Value > toiDa)
+                    return (false, $"Với cân nặng {request.CanNang:0.#} kg và Hb {request.Hemoglobin:0.#} g/dL, người hiến chỉ được hiến tối đa {toiDa} ml " +
+                                   $"(không quá {DonationRules.SoMlToiDaMoiKg:0} ml/kg).", null);
             }
 
             var screening = new KhamSangLoc
@@ -115,7 +125,8 @@ namespace HienMauAPI.Services
                 Hemoglobin = request.Hemoglobin,
                 KetQua = ketQua,
                 LyDoKhongDat = ketQua == "KhongDat" ? lyDo : null,
-                GhiChu = InputValidator.NormalizeOptional(request.GhiChu)
+                GhiChu = InputValidator.NormalizeOptional(request.GhiChu),
+                TheTichChiDinh = ketQua == "Dat" ? request.TheTichChiDinh : null
             };
             _db.KhamSangLocs.Add(screening);
 
@@ -126,7 +137,7 @@ namespace HienMauAPI.Services
 
             var tenDot = registration.DotHienMau?.TenDot ?? "đợt hiến máu";
             var noiDung = ketQua == "Dat"
-                ? $"Bạn đã đạt khám sàng lọc trong \"{tenDot}\". Nhân viên sẽ tiến hành lấy máu. Cảm ơn bạn!"
+                ? $"Bạn đã đạt khám sàng lọc trong \"{tenDot}\". Bác sĩ chỉ định hiến {request.TheTichChiDinh} ml máu. Nhân viên sẽ tiến hành lấy máu. Cảm ơn bạn!"
                 : $"Rất tiếc, bạn chưa đủ điều kiện hiến máu trong \"{tenDot}\". Lý do: {lyDo}";
             _db.ThongBaos.Add(new ThongBao
             {

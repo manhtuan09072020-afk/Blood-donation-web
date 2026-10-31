@@ -7,7 +7,7 @@ import dayjs from 'dayjs';
 import { registrationApi, screeningApi, campaignApi } from '../../api';
 import { useAuth, ROLES } from '../../context/AuthContext';
 import { BloodBadge, PageHeader } from '../../components/common';
-import { fmtDateTime, ageOf } from '../../utils/format';
+import { fmtDateTime, ageOf, maxDonationVolume, THE_TICH_CHUAN } from '../../utils/format';
 
 // Tiêu chuẩn sàng lọc (đồng bộ với DonationRules phía backend)
 function evaluate(v) {
@@ -59,6 +59,15 @@ export default function Screening() {
   const checks = useMemo(() => evaluate(values), [values]);
   const allPass = checks.every((c) => c.ok === true);
   const anyFail = checks.some((c) => c.ok === false);
+  const maxVolume = maxDonationVolume(values.canNang, values.hemoglobin);
+  const desired = current?.theTichDangKy;
+
+  // Gợi ý thể tích chỉ định = mong muốn của người hiến nhưng không vượt mức tối đa cho phép
+  useEffect(() => {
+    if (values.ketQua !== 'Dat' || !maxVolume) return;
+    const cur = form.getFieldValue('theTichChiDinh');
+    if (!cur || cur > maxVolume) form.setFieldValue('theTichChiDinh', Math.min(desired || 350, maxVolume));
+  }, [values.ketQua, maxVolume, desired, form]);
 
   const open = (r) => {
     setCurrent(r);
@@ -72,7 +81,7 @@ export default function Screening() {
     try {
       const lyDo = Array.isArray(v.lyDoKhongDat) ? v.lyDoKhongDat.join('; ') : v.lyDoKhongDat;
       await screeningApi.create({ dangKyId: current.id, ...v, lyDoKhongDat: lyDo });
-      message.success(v.ketQua === 'Dat' ? `${current.hoTenNguoiHien} ĐẠT — chuyển sang lấy máu` : 'Đã lưu kết quả không đạt và thông báo cho người hiến');
+      message.success(v.ketQua === 'Dat' ? `${current.hoTenNguoiHien} ĐẠT — chỉ định hiến ${v.theTichChiDinh} ml, chuyển sang lấy máu` : 'Đã lưu kết quả không đạt và thông báo cho người hiến');
       setCurrent(null);
       load();
     } catch (e) { message.error(e.message); }
@@ -101,6 +110,7 @@ export default function Screening() {
                   { title: 'Người hiến', dataIndex: 'hoTenNguoiHien', render: (v, r) => <><b>{v}</b><div style={{ fontSize: 12, color: '#64748b' }}>{r.gioiTinh}, {ageOf(r.ngaySinh)} tuổi · CCCD {r.cccd}</div></> },
                   { title: 'Nhóm máu', width: 100, render: (_, r) => <BloodBadge nhomMau={r.nhomMau} heRh={r.heRh} /> },
                   { title: 'Đợt hiến máu', dataIndex: 'tenDot' },
+                  { title: 'Muốn hiến', dataIndex: 'theTichDangKy', width: 110, align: 'center', render: (v) => (v ? <Tag bordered={false}>{v} ml</Tag> : '—') },
                   { title: 'Ghi chú', dataIndex: 'ghiChu', render: (v) => v || '—' },
                   { title: '', width: 150, render: (_, r) => canScreen && <Button type="primary" icon={<MedicineBoxOutlined />} onClick={() => open(r)}>Khám</Button> }
                 ]} />
@@ -122,6 +132,7 @@ export default function Screening() {
                     { title: 'Mạch', dataIndex: 'mach', width: 70 },
                     { title: 'Hb', dataIndex: 'hemoglobin', width: 70 },
                     { title: 'Kết quả', dataIndex: 'ketQua', width: 220, render: (v, r) => (v === 'Dat' ? <Tag color="green">Đạt {r.daTiepNhan && '· đã lấy máu'}</Tag> : <><Tag color="red">Không đạt</Tag><div style={{ fontSize: 12 }}>{r.lyDoKhongDat}</div></>) },
+                    { title: 'Chỉ định hiến', dataIndex: 'theTichChiDinh', width: 120, align: 'center', render: (v, r) => (v ? <><b style={{ color: '#c8102e' }}>{v} ml</b>{r.theTichDangKy && r.theTichDangKy !== v && <div style={{ fontSize: 11, color: '#64748b' }}>muốn {r.theTichDangKy} ml</div>}</> : '—') },
                     { title: 'Bác sĩ khám', dataIndex: 'nhanVienKham', width: 160 }
                   ]} />
               </>
@@ -139,6 +150,7 @@ export default function Screening() {
                 <Descriptions.Item label="Nhóm máu"><BloodBadge nhomMau={current.nhomMau} heRh={current.heRh} /></Descriptions.Item>
                 <Descriptions.Item label="Giới tính">{current.gioiTinh}</Descriptions.Item>
                 <Descriptions.Item label="Tuổi">{ageOf(current.ngaySinh)}</Descriptions.Item>
+                <Descriptions.Item label="Muốn hiến"><b>{current.theTichDangKy ? `${current.theTichDangKy} ml` : 'Chưa chọn'}</b></Descriptions.Item>
               </Descriptions>
               <Form form={form} layout="vertical">
                 <Row gutter={12}>
@@ -154,6 +166,19 @@ export default function Screening() {
                     <Radio.Button value="KhongDat">Không đạt</Radio.Button>
                   </Radio.Group>
                 </Form.Item>
+                {values.ketQua === 'Dat' && (
+                  <div style={{ background: '#fff7f8', border: '1px solid #fecdd3', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+                    <Form.Item name="theTichChiDinh" label={<b>Chỉ định thể tích được hiến</b>} style={{ marginBottom: 6 }}
+                      rules={[{ required: true, message: 'Chỉ định thể tích hiến' }]}>
+                      <Radio.Group optionType="button" buttonStyle="solid"
+                        options={THE_TICH_CHUAN.map((v) => ({ value: v, label: `${v} ml`, disabled: v > maxVolume }))} />
+                    </Form.Item>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      Người hiến muốn hiến <b>{desired ? `${desired} ml` : '—'}</b> · Tối đa cho phép: <b style={{ color: '#c8102e' }}>{maxVolume} ml</b>
+                      {' '}(cân nặng {values.canNang} kg × 9 ml/kg{values.canNang < 45 ? ', dưới 45 kg chỉ hiến 250 ml' : ''}{values.hemoglobin < 12.5 ? ', Hb < 12,5 g/dL chỉ hiến 250 ml' : ''})
+                    </Typography.Text>
+                  </div>
+                )}
                 {values.ketQua === 'KhongDat' && (
                   <Form.Item name="lyDoKhongDat" label="Lý do không đạt" rules={[{ required: true, message: 'Nhập lý do' }]}>
                     <Select mode="tags" maxCount={3} options={REASONS.map((r) => ({ value: r, label: r }))} placeholder="Chọn hoặc nhập lý do" />

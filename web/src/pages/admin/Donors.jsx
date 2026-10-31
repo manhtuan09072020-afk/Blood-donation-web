@@ -8,12 +8,12 @@ import { donorApi } from '../../api';
 import { useAuth, ROLES } from '../../context/AuthContext';
 import { BloodBadge, PageHeader, RegistrationStatusTag, StatCard } from '../../components/common';
 import { fmtDate, fmtDateTime, fmtMl, ageOf, GIOI_TINH_OPTIONS, NHOM_MAU_OPTIONS, RH_OPTIONS, bloodLabel } from '../../utils/format';
-import { exportCsv } from '../../utils/exportCsv';
+import { exportExcel } from '../../utils/exportExcel';
 import CreateDonorModal from '../../components/CreateDonorModal';
 
 export default function Donors() {
   const { message } = App.useApp();
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ keyword: '', nhomMau: undefined, heRh: undefined, trangThai: undefined, eligible: undefined });
@@ -72,12 +72,22 @@ export default function Donors() {
     } catch (e) { message.error(e.message); }
   };
 
-  const doExport = () => exportCsv(`nguoi-hien-mau-${dayjs().format('YYYYMMDD')}`, [
-    { title: 'Họ tên', value: 'hoTen' }, { title: 'CCCD', value: 'cccd' }, { title: 'Ngày sinh', value: (r) => fmtDate(r.ngaySinh) },
-    { title: 'Giới tính', value: 'gioiTinh' }, { title: 'Nhóm máu', value: (r) => bloodLabel(r.nhomMau, r.heRh) },
-    { title: 'Điện thoại', value: 'soDienThoai' }, { title: 'Email', value: 'email' }, { title: 'Địa chỉ', value: 'diaChi' },
-    { title: 'Số lần hiến', value: 'soLanHien' }, { title: 'Tổng ml', value: 'tongTheTich' }, { title: 'Lần hiến gần nhất', value: (r) => fmtDate(r.lanHienGanNhat) }
-  ], shown);
+  const doExport = () => exportExcel({
+    fileName: 'danh-sach-nguoi-hien-mau', title: 'Danh sách người hiến máu', sheetName: 'Người hiến', signer: user?.hoTen,
+    subtitle: [filters.nhomMau && `Nhóm ${bloodLabel(filters.nhomMau, filters.heRh)}`, filters.eligible === 'yes' && 'Đủ điều kiện hiến', filters.eligible === 'no' && 'Chưa đủ 12 tuần'].filter(Boolean).join(' · ') || 'Tất cả người hiến',
+    summary: [
+      { label: 'Số người hiến', value: shown.length }, { label: 'Đã từng hiến máu', value: shown.filter((d) => d.soLanHien > 0).length },
+      { label: 'Tổng số lần hiến', value: shown.reduce((a, d) => a + d.soLanHien, 0) }, { label: 'Tổng lượng máu đã hiến', value: shown.reduce((a, d) => a + Number(d.tongTheTich || 0), 0), type: 'ml' }
+    ],
+    columns: [
+      { title: 'Họ tên', value: 'hoTen' }, { title: 'CCCD', value: 'cccd' }, { title: 'Ngày sinh', value: 'ngaySinh', type: 'date' },
+      { title: 'Giới tính', value: 'gioiTinh', align: 'center' }, { title: 'Nhóm máu', value: (r) => bloodLabel(r.nhomMau, r.heRh), align: 'center' },
+      { title: 'Điện thoại', value: 'soDienThoai' }, { title: 'Email', value: 'email' }, { title: 'Địa chỉ', value: 'diaChi', maxWidth: 40 },
+      { title: 'Số lần hiến', value: 'soLanHien', type: 'number', total: 'sum' }, { title: 'Tổng lượng máu', value: 'tongTheTich', type: 'ml', total: 'sum' },
+      { title: 'Lần hiến gần nhất', value: 'lanHienGanNhat', type: 'date' }, { title: 'Có thể hiến từ', value: 'ngayCoTheHienTiepTheo', type: 'date' }
+    ],
+    rows: shown
+  });
 
   const total = data.length;
   const donated = data.filter((d) => d.soLanHien > 0).length;
@@ -87,7 +97,7 @@ export default function Donors() {
     <>
       <PageHeader title="Người hiến máu" subtitle="Quản lý hồ sơ, nhóm máu và lịch sử hiến máu của người hiến"
         extra={<>
-          <Button icon={<DownloadOutlined />} onClick={doExport}>Xuất Excel (CSV)</Button>
+          <Button icon={<DownloadOutlined />} onClick={doExport}>Xuất Excel</Button>
           {canEdit && <Button type="primary" icon={<UserAddOutlined />} onClick={() => setCreating(true)}>Thêm người hiến</Button>}
         </>} />
 

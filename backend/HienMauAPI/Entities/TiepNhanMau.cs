@@ -20,6 +20,9 @@ namespace HienMauAPI.Entities
         [MaxLength(255)]
         public string? GhiChu { get; set; }
 
+        [MaxLength(10)]
+        public string? LoaiTui { get; set; } // Don | Doi | Ba (LoaiTuiMau)
+
         // Một lần lấy máu có thể được điều chế tách thành nhiều thành phần (hồng cầu, huyết tương, tiểu cầu)
         public ICollection<KhoMau> KhoMaus { get; set; } = new List<KhoMau>();
     }

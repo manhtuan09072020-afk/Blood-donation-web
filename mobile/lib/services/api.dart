@@ -86,8 +86,8 @@ class Api {
   // ===== Đăng ký hiến máu =====
   static Future<List<Registration>> myRegistrations() async =>
       (await _send('GET', '/registrations/me') as List).map((e) => Registration.fromJson(e)).toList();
-  static Future<Registration> register(int dotId, String? ghiChu) async =>
-      Registration.fromJson(await _send('POST', '/registrations', {'dotId': dotId, 'ghiChu': ghiChu}));
+  static Future<Registration> register(int dotId, String? ghiChu, int theTichDangKy) async =>
+      Registration.fromJson(await _send('POST', '/registrations', {'dotId': dotId, 'ghiChu': ghiChu, 'theTichDangKy': theTichDangKy}));
   static Future<String> cancelRegistration(int id) async => (await _send('PUT', '/registrations/$id/cancel'))['message'];
 
   // ===== Thông báo =====

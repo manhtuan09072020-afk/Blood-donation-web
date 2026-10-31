@@ -40,6 +40,10 @@ namespace HienMauAPI.Entities
         public int? NhanVienHuyId { get; set; }
         public NhanVien? NhanVienHuy { get; set; }
 
+        // Túi nhỏ được chia từ túi gốc (chia túi vô trùng) -> truy vết về túi gốc
+        public int? KhoMauGocId { get; set; }
+        public KhoMau? KhoMauGoc { get; set; }
+
         public ICollection<ChiTietXuatKho> ChiTietXuatKhos { get; set; } = new List<ChiTietXuatKho>();
     }
 }

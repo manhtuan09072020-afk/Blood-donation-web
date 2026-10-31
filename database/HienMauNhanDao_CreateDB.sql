@@ -126,6 +126,7 @@ CREATE TABLE DangKyHienMau (
                         CONSTRAINT CK_DangKy_TrangThai
                         CHECK (TrangThai IN (N'ChoDuyet', N'DaDuyet', N'DaSangLoc', N'DaHienMau', N'TuChoi', N'Huy')),
     GhiChu          NVARCHAR(255)   NULL,
+    TheTichDangKy   INT             NULL CONSTRAINT CK_DangKy_TheTich CHECK (TheTichDangKy IN (250, 350, 450)), -- ml người hiến mong muốn
     CONSTRAINT UQ_NguoiHien_Dot UNIQUE (NguoiHienId, DotId)
 );
 GO
@@ -147,7 +148,8 @@ CREATE TABLE KhamSangLoc (
     Hemoglobin          DECIMAL(4,1)    NULL,   -- g/dL
     KetQua              NVARCHAR(20)    NOT NULL CONSTRAINT CK_KhamSangLoc_KetQua CHECK (KetQua IN (N'Dat', N'KhongDat')),
     LyDoKhongDat        NVARCHAR(255)   NULL,
-    GhiChu              NVARCHAR(255)   NULL
+    GhiChu              NVARCHAR(255)   NULL,
+    TheTichChiDinh      INT             NULL CONSTRAINT CK_KhamSangLoc_TheTich CHECK (TheTichChiDinh IN (250, 350, 450)) -- ml bác sĩ chỉ định
 );
 GO
 
@@ -162,7 +164,8 @@ CREATE TABLE TiepNhanMau (
                             CONSTRAINT FK_TiepNhan_NhanVien REFERENCES NhanVien(Id),
     NgayLayMau          DATETIME2       NOT NULL DEFAULT (SYSDATETIME()),
     TheTich             DECIMAL(6,2)    NOT NULL CONSTRAINT CK_TiepNhan_TheTich CHECK (TheTich > 0), -- ml
-    GhiChu              NVARCHAR(255)   NULL
+    GhiChu              NVARCHAR(255)   NULL,
+    LoaiTui             NVARCHAR(10)    NULL CONSTRAINT CK_TiepNhan_LoaiTui CHECK (LoaiTui IN (N'Don', N'Doi', N'Ba')) -- túi đơn / đôi / ba
 );
 GO
 CREATE INDEX IX_TiepNhanMau_NgayLayMau ON TiepNhanMau(NgayLayMau);
@@ -187,12 +190,14 @@ CREATE TABLE KhoMau (
     ViTriLuuTru         NVARCHAR(50)    NULL,
     TrangThai           NVARCHAR(20)    NOT NULL DEFAULT (N'ConKho')
                             CONSTRAINT CK_KhoMau_TrangThai
-                            CHECK (TrangThai IN (N'ConKho', N'DaXuat', N'HetHan', N'HuyBo')),
+                            CHECK (TrangThai IN (N'ConKho', N'DaXuat', N'HetHan', N'HuyBo', N'DaChia')),
     -- Thông tin hủy bỏ (khi TrangThai = HuyBo)
     LyDoHuy             NVARCHAR(255)   NULL,
     NgayHuy             DATETIME        NULL,
     NhanVienHuyId       INT             NULL
-                            CONSTRAINT FK_KhoMau_NhanVienHuy REFERENCES NhanVien(Id)
+                            CONSTRAINT FK_KhoMau_NhanVienHuy REFERENCES NhanVien(Id),
+    KhoMauGocId         INT             NULL -- túi nhỏ chia từ túi gốc (chia túi vô trùng)
+                            CONSTRAINT FK_KhoMau_Goc REFERENCES KhoMau(Id)
 );
 GO
 CREATE INDEX IX_KhoMau_NhomMau_Rh ON KhoMau(NhomMau, HeRh, TrangThai);
@@ -223,7 +228,9 @@ CREATE TABLE PhieuXuatKho (
                             CONSTRAINT FK_PhieuXuat_CoSoYTe REFERENCES CoSoYTe(Id),
     NgayXuat            DATETIME2       NOT NULL DEFAULT (SYSDATETIME()),
     NoiNhan             NVARCHAR(150)   NOT NULL, -- Tên cơ sở y tế nhận máu (lưu lại tại thời điểm xuất)
-    LyDo                NVARCHAR(255)   NULL
+    LyDo                NVARCHAR(255)   NULL,
+    NguoiNhan           NVARCHAR(100)   NULL, -- người đến nhận máu
+    MucDoKhanCap        NVARCHAR(20)    NULL CONSTRAINT CK_PhieuXuat_MucDo CHECK (MucDoKhanCap IN (N'Thuong', N'Khan', N'CapCuu'))
 );
 GO
 

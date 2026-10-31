@@ -15,54 +15,90 @@ namespace HienMauAPI.Tests
         };
 
         [Fact]
-        public async Task Issue_PartialQuantity_ReducesStockAndKeepsUnitAvailable()
+        public async Task Issue_PartOfBag_IsRejected_BecauseBloodIsIssuedWholeBag()
         {
             using var db = TestDb.Create();
             var (staffId, donorId, dotId) = TestDb.SeedBasics(db);
             var unit = TestDb.AddBloodUnit(db, staffId, donorId, dotId, soLuong: 450m);
             var service = new InventoryService(db);
 
-            var (success, error, data) = await service.IssueAsync(staffId, Request((unit.Id, 200m)));
+            var (success, error, _) = await service.IssueAsync(staffId, Request((unit.Id, 200m)));
 
-            Assert.True(success, error);
-            Assert.NotNull(data);
+            Assert.False(success);
+            Assert.Contains("nguyên túi", error);
+            Assert.Equal(0, await db.PhieuXuatKhos.CountAsync());   // không có phiếu mồ côi
             var updated = await db.KhoMaus.SingleAsync(k => k.Id == unit.Id);
-            Assert.Equal(250m, updated.SoLuong);
+            Assert.Equal(450m, updated.SoLuong);
             Assert.Equal(TrangThaiKhoMau.ConKho, updated.TrangThai);
-            Assert.Equal(1, await db.PhieuXuatKhos.CountAsync());
-            Assert.Equal(1, await db.ChiTietXuatKhos.CountAsync());
         }
 
         [Fact]
-        public async Task Issue_FullQuantity_MarksUnitAsIssued()
+        public async Task Issue_WholeBag_MarksIssued_AndKeepsLabelVolume()
         {
             using var db = TestDb.Create();
             var (staffId, donorId, dotId) = TestDb.SeedBasics(db);
             var unit = TestDb.AddBloodUnit(db, staffId, donorId, dotId, soLuong: 350m);
             var service = new InventoryService(db);
 
-            var (success, _, _) = await service.IssueAsync(staffId, Request((unit.Id, 350m)));
+            // Không cần gửi số lượng: hệ thống xuất nguyên túi
+            var (success, error, data) = await service.IssueAsync(staffId, new IssueRequestDto
+            {
+                NoiNhan = "Bệnh viện Chợ Rẫy", NguoiNhan = "Điều dưỡng Lan", MucDoKhanCap = MucDoKhanCap.CapCuu,
+                ChiTiet = new() { new IssueItemDto { KhoMauId = unit.Id } }
+            });
 
-            Assert.True(success);
+            Assert.True(success, error);
+            Assert.Equal(350m, data!.TongSoLuong);
+            Assert.Equal(MucDoKhanCap.CapCuu, data.MucDoKhanCap);
             var updated = await db.KhoMaus.SingleAsync(k => k.Id == unit.Id);
-            Assert.Equal(0m, updated.SoLuong);
+            Assert.Equal(350m, updated.SoLuong);
             Assert.Equal(TrangThaiKhoMau.DaXuat, updated.TrangThai);
+            Assert.Equal("Điều dưỡng Lan", (await db.PhieuXuatKhos.SingleAsync()).NguoiNhan);
         }
 
         [Fact]
-        public async Task Issue_MoreThanStock_FailsWithoutCreatingAnyRecord()
+        public async Task Split_Bag_CreatesTraceableChildBags()
         {
             using var db = TestDb.Create();
             var (staffId, donorId, dotId) = TestDb.SeedBasics(db);
-            var unit = TestDb.AddBloodUnit(db, staffId, donorId, dotId, soLuong: 450m);
+            var unit = TestDb.AddBloodUnit(db, staffId, donorId, dotId, soLuong: 250m);
+            unit.ThanhPhanMau = ThanhPhanMauNames.HongCau;
+            db.SaveChanges();
             var service = new InventoryService(db);
 
-            var (success, error, _) = await service.IssueAsync(staffId, Request((unit.Id, 500m)));
+            var (ok, error, children) = await service.SplitAsync(unit.Id, new List<decimal> { 100m, 100m });
 
-            Assert.False(success);
-            Assert.Contains("vượt quá", error);
-            Assert.Equal(0, await db.PhieuXuatKhos.CountAsync());   // không có phiếu mồ côi
-            Assert.Equal(450m, (await db.KhoMaus.SingleAsync()).SoLuong);
+            Assert.True(ok, error);
+            Assert.Equal(2, children!.Count);
+            Assert.Equal(unit.MaLoMau + "-A", children[0].MaLoMau);
+            Assert.All(children, c => Assert.Equal(unit.MaLoMau, c.MaLoMauGoc));
+            Assert.All(children, c => Assert.Equal(unit.HanSuDung, c.HanSuDung));
+            Assert.Equal(TrangThaiKhoMau.DaChia, (await db.KhoMaus.SingleAsync(k => k.Id == unit.Id)).TrangThai);
+
+            // Túi nhỏ xuất được bình thường
+            var (issued, issueError, _) = await service.IssueAsync(staffId, Request((children[0].Id, 100m)));
+            Assert.True(issued, issueError);
+        }
+
+        [Fact]
+        public async Task Split_InvalidRequests_AreRejected()
+        {
+            using var db = TestDb.Create();
+            var (staffId, donorId, dotId) = TestDb.SeedBasics(db);
+            var whole = TestDb.AddBloodUnit(db, staffId, donorId, dotId, soLuong: 350m); // máu toàn phần
+            var rbc = TestDb.AddBloodUnit(db, staffId, donorId, dotId, soLuong: 200m);
+            rbc.ThanhPhanMau = ThanhPhanMauNames.HongCau;
+            db.SaveChanges();
+            var service = new InventoryService(db);
+
+            var (wholeOk, _, _) = await service.SplitAsync(whole.Id, new List<decimal> { 100m, 100m });
+            var (tooMuch, _, _) = await service.SplitAsync(rbc.Id, new List<decimal> { 150m, 100m });
+            var (oneBag, _, _) = await service.SplitAsync(rbc.Id, new List<decimal> { 100m });
+
+            Assert.False(wholeOk);
+            Assert.False(tooMuch);
+            Assert.False(oneBag);
+            Assert.Equal(2, await db.KhoMaus.CountAsync());
         }
 
         [Fact]

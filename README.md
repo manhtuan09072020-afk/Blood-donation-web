@@ -181,6 +181,20 @@ cd mobile && flutter test
    (hết hạn trước – xuất trước), gợi ý nhóm máu tương thích khi thiếu, và **tự động kêu gọi** người hiến cùng nhóm máu
    đã đủ điều kiện khi tồn kho xuống dưới ngưỡng.
 
+### Quy tắc nghiệp vụ máu (theo Thông tư 26/2013/TT-BYT)
+| Khâu | Quy tắc trong hệ thống |
+|---|---|
+| Đăng ký | Người hiến chọn thể tích muốn hiến: **250 / 350 / 450 ml** (web, mobile, đăng ký tại điểm) |
+| Khám sàng lọc | Bác sĩ **chỉ định thể tích được hiến**, không vượt mức tối đa: ≤ 9 ml/kg cân nặng (< 45 kg → 250 ml, 45–49 kg → 350 ml, ≥ 50 kg → 450 ml); Hb < 12,5 g/dL → tối đa 250 ml |
+| Tiếp nhận | Ghi **thời điểm lấy máu** thực tế (không ở tương lai, sau giờ khám); thể tích thực lấy ≤ chỉ định + 10% |
+| Nhập kho | **Mỗi lần hiến là một túi riêng**, không trộn máu nhiều người. Loại túi quyết định điều chế: *túi đơn* (máu toàn phần), *túi đôi* (hồng cầu + huyết tương), *túi ba* (+ tiểu cầu, từ 350 ml). Mỗi chế phẩm là một đơn vị có mã = mã túi gốc `LM{yyMMdd}{số phiếu}` + `TP/HC/HT/TC` để truy vết |
+| Hạn sử dụng | Tính **từ ngày lấy máu**: toàn phần 35 ngày, hồng cầu 42 ngày (2–6 °C) · huyết tương 365 ngày (≤ −25 °C) · tiểu cầu 5 ngày (20–24 °C, lắc liên tục) |
+| Xuất kho | Phiếu yêu cầu của cơ sở y tế (mức độ thường / khẩn / cấp cứu, người nhận) → chọn túi **FEFO** → xuất **nguyên túi** (không rút một phần túi để giữ hệ kín, vô trùng) → bảng kiểm trước khi giao → in phiếu xuất kiêm biên bản giao nhận |
+| Nhóm tương thích | Khi bác sĩ cho phép: hồng cầu theo ABO/Rh (O− dùng sau cùng), huyết tương/tiểu cầu theo ABO (AB cho mọi nhóm), máu toàn phần bắt buộc cùng nhóm |
+| Chia túi | Cần lượng nhỏ (bệnh nhi): chia 1 túi chế phẩm thành 2–4 túi nhỏ bằng hàn nối vô trùng, giữ hạn dùng, mã `…-A/-B`, túi gốc → *Đã chia túi* |
+| Kêu gọi | Nhóm máu **cạn kiệt** (< 25% ngưỡng) / **thiếu** (< ngưỡng): ưu tiên nhóm nguy cấp còn người hiến đủ điều kiện, nội dung soạn sẵn theo mức độ; tự động 1 lần / 3 ngày / nhóm |
+| Báo cáo | Xuất **Excel (.xlsx)** theo mẫu văn bản hành chính: quốc hiệu, kỳ báo cáo, chỉ số tổng hợp, bảng có định dạng, dòng tổng cộng (công thức SUM), ký tên người lập biểu |
+
 ---
 
 ## 4. Cấu trúc mã nguồn

@@ -20,6 +20,9 @@ namespace HienMauAPI.Entities
         [MaxLength(255)]
         public string? GhiChu { get; set; }
 
+        // Thể tích người hiến mong muốn (250/350/450 ml) - bác sĩ quyết định thể tích thực tế khi khám
+        public int? TheTichDangKy { get; set; }
+
         public KhamSangLoc? KhamSangLoc { get; set; }
     }
 }

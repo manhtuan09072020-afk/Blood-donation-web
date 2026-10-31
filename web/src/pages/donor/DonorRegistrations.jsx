@@ -57,6 +57,14 @@ export default function DonorRegistrations() {
             { title: 'Đợt hiến máu', dataIndex: 'tenDot', render: (v, r) => <><b>{v}</b><div style={{ color: '#64748b', fontSize: 12 }}>{r.tenDiem}</div></> },
             { title: 'Thời gian', dataIndex: 'ngayBatDau', render: fmtDateTime, width: 150 },
             { title: 'Ngày đăng ký', dataIndex: 'ngayDangKy', render: fmtDateTime, width: 150, responsive: ['md'] },
+            {
+              title: 'Lượng máu', width: 150, responsive: ['sm'], render: (_, r) => (
+                <div style={{ fontSize: 13 }}>
+                  {r.theTichDangKy ? <>Đăng ký: <b>{r.theTichDangKy} ml</b></> : '—'}
+                  {r.theTichChiDinh && <div style={{ color: '#c8102e' }}>Bác sĩ chỉ định: <b>{r.theTichChiDinh} ml</b></div>}
+                </div>
+              )
+            },
             { title: 'Trạng thái', dataIndex: 'trangThai', render: (v) => <RegistrationStatusTag value={v} />, width: 160 },
             {
               title: '', width: 90, render: (_, r) => ['ChoDuyet', 'DaDuyet'].includes(r.trangThai) && (

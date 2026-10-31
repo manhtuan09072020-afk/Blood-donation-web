@@ -8,7 +8,13 @@ import dayjs from 'dayjs';
 import { reportApi } from '../../api';
 import { BloodBadge, CampaignStatusTag, Loading, PageHeader } from '../../components/common';
 import { fmtDate, fmtMl, fmtNumber, thanhPhanLabel, bloodLabel } from '../../utils/format';
-import { exportCsv } from '../../utils/exportCsv';
+import { exportExcel } from '../../utils/exportExcel';
+import { useAuth } from '../../context/AuthContext';
+
+const rangeText = (r) => (r?.[0] && r?.[1] ? `Kỳ báo cáo: ${r[0].format('DD/MM/YYYY')} – ${r[1].format('DD/MM/YYYY')}` : 'Toàn bộ thời gian');
+const labelValue = (title, unitTitle, type = 'number') => [
+  { title, value: 'label' }, { title: unitTitle, value: (x) => Number(x.value), type, total: 'sum' }
+];
 
 const PALETTE = ['#c8102e', '#2563eb', '#f59e0b', '#16a34a', '#7c3aed', '#0891b2', '#e11d48', '#64748b', '#fb7185', '#84cc16'];
 
@@ -48,6 +54,7 @@ function RangeBar({ value, onChange, extra }) {
 const rangeParams = (r) => ({ tuNgay: r?.[0]?.format('YYYY-MM-DD'), denNgay: r?.[1]?.format('YYYY-MM-DD') });
 
 function MonthlyReport() {
+  const { user } = useAuth();
   const [year, setYear] = useState(dayjs());
   const [data, setData] = useState(null);
   useEffect(() => { reportApi.monthly(year.year()).then(setData); }, [year]);
@@ -58,9 +65,22 @@ function MonthlyReport() {
       <div className="toolbar no-print">
         <DatePicker picker="year" value={year} onChange={(v) => v && setYear(v)} allowClear={false} />
         <div style={{ flex: 1 }} />
-        <Button icon={<DownloadOutlined />} onClick={() => exportCsv(`bao-cao-thang-${year.year()}`, [
-          { title: 'Tháng', value: (m) => `${m.thang}/${m.nam}` }, { title: 'Lượt hiến', value: 'soLuotHienMau' }, { title: 'Tiếp nhận (ml)', value: 'tongTheTich' },
-          { title: 'Số phiếu xuất', value: 'soPhieuXuat' }, { title: 'Xuất kho (ml)', value: 'tongXuat' }], data)}>Xuất CSV</Button>
+        <Button icon={<DownloadOutlined />} onClick={() => exportExcel({
+          fileName: `bao-cao-tong-hop-${year.year()}`, title: `Báo cáo tổng hợp hoạt động hiến máu năm ${year.year()}`, sheetName: `Năm ${year.year()}`,
+          subtitle: `Kỳ báo cáo: 01/01/${year.year()} – 31/12/${year.year()}`, signer: user?.hoTen,
+          summary: [
+            { label: 'Tổng lượt hiến máu', value: sum('soLuotHienMau') }, { label: 'Tổng lượng máu tiếp nhận', value: sum('tongTheTich'), type: 'ml' },
+            { label: 'Số phiếu xuất kho', value: sum('soPhieuXuat') }, { label: 'Tổng lượng máu xuất kho', value: sum('tongXuat'), type: 'ml' }
+          ],
+          sections: [{
+            title: 'SỐ LIỆU THEO THÁNG', rows: data, columns: [
+              { title: 'Tháng', value: (m) => `Tháng ${m.thang}/${m.nam}` }, { title: 'Lượt hiến máu', value: 'soLuotHienMau', type: 'number', total: 'sum' },
+              { title: 'Lượng máu tiếp nhận', value: 'tongTheTich', type: 'ml', total: 'sum' }, { title: 'Số phiếu xuất', value: 'soPhieuXuat', type: 'number', total: 'sum' },
+              { title: 'Lượng máu xuất kho', value: 'tongXuat', type: 'ml', total: 'sum' },
+              { title: 'Chênh lệch nhập − xuất', value: (m) => Number(m.tongTheTich) - Number(m.tongXuat), type: 'ml', total: 'sum' }
+            ]
+          }]
+        })}>Xuất Excel</Button>
         <Button icon={<PrinterOutlined />} onClick={() => window.print()}>In báo cáo</Button>
       </div>
       <Row gutter={16} style={{ marginBottom: 16 }}>
@@ -96,12 +116,33 @@ function MonthlyReport() {
 }
 
 function DonorReport() {
+  const { user } = useAuth();
   const [d, setD] = useState(null);
   useEffect(() => { reportApi.donors().then(setD); }, []);
   if (!d) return <Loading />;
+  const doExport = () => exportExcel({
+    fileName: 'bao-cao-nguoi-hien-mau', title: 'Báo cáo thống kê người hiến máu', sheetName: 'Người hiến', signer: user?.hoTen,
+    subtitle: `Số liệu đến ngày ${dayjs().format('DD/MM/YYYY')}`,
+    summary: [
+      { label: 'Người hiến đang hoạt động', value: d.tongNguoiHien }, { label: 'Đã từng hiến máu', value: d.daTungHien },
+      { label: 'Tỷ lệ chuyển đổi (%)', value: d.tongNguoiHien ? Math.round((d.daTungHien / d.tongNguoiHien) * 100) : 0, type: 'percent' }
+    ],
+    sections: [
+      { title: 'THEO NHÓM MÁU', rows: d.theoNhomMau, columns: labelValue('Nhóm máu', 'Số người') },
+      { title: 'THEO GIỚI TÍNH', rows: d.theoGioiTinh, columns: labelValue('Giới tính', 'Số người') },
+      { title: 'THEO ĐỘ TUỔI', rows: d.theoDoTuoi, columns: labelValue('Độ tuổi', 'Số người') },
+      {
+        title: 'TOP 10 NGƯỜI HIẾN MÁU TÍCH CỰC', rows: d.topNguoiHien, columns: [
+          { title: 'Họ tên', value: 'hoTen' }, { title: 'Nhóm máu', value: (r) => bloodLabel(r.nhomMau, r.heRh), align: 'center' },
+          { title: 'Số lần hiến', value: 'soLanHien', type: 'number', total: 'sum' }, { title: 'Tổng lượng máu', value: 'tongTheTich', type: 'ml', total: 'sum' },
+          { title: 'Lần hiến gần nhất', value: 'lanHienGanNhat', type: 'date' }
+        ]
+      }
+    ]
+  });
   return (
     <>
-      <div className="toolbar no-print"><div style={{ flex: 1 }} /><Button icon={<PrinterOutlined />} onClick={() => window.print()}>In báo cáo</Button></div>
+      <div className="toolbar no-print"><div style={{ flex: 1 }} /><Button icon={<DownloadOutlined />} onClick={doExport}>Xuất Excel</Button><Button icon={<PrinterOutlined />} onClick={() => window.print()}>In báo cáo</Button></div>
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col xs={12} md={8}><Card size="small"><Statistic title="Người hiến đang hoạt động" value={d.tongNguoiHien} /></Card></Col>
         <Col xs={12} md={8}><Card size="small"><Statistic title="Đã từng hiến máu" value={d.daTungHien} /></Card></Col>
@@ -133,10 +174,7 @@ function DonorReport() {
           </Card>
         </Col>
         <Col xs={24} lg={14}>
-          <Card size="small" title="Top 10 người hiến máu tích cực" variant="borderless"
-            extra={<Button size="small" icon={<DownloadOutlined />} onClick={() => exportCsv('top-nguoi-hien', [
-              { title: 'Họ tên', value: 'hoTen' }, { title: 'Nhóm máu', value: (r) => bloodLabel(r.nhomMau, r.heRh) }, { title: 'Số lần', value: 'soLanHien' },
-              { title: 'Tổng ml', value: 'tongTheTich' }, { title: 'Lần gần nhất', value: (r) => fmtDate(r.lanHienGanNhat) }], d.topNguoiHien)}>CSV</Button>}>
+          <Card size="small" title="Top 10 người hiến máu tích cực" variant="borderless">
             <Table size="small" rowKey="id" pagination={false} dataSource={d.topNguoiHien}
               columns={[
                 { title: '#', width: 40, render: (_, __, i) => <b>{i + 1}</b> },
@@ -154,17 +192,33 @@ function DonorReport() {
 }
 
 function CampaignReport() {
+  const { user } = useAuth();
   const [range, setRange] = useState([dayjs().subtract(1, 'year'), dayjs().add(1, 'month')]);
   const [data, setData] = useState(null);
   useEffect(() => { reportApi.campaigns(rangeParams(range)).then(setData); }, [range]);
   if (!data) return <Loading />;
   const tot = (k) => data.reduce((a, c) => a + Number(c[k]), 0);
+  const doExport = () => exportExcel({
+    fileName: 'bao-cao-dot-hien-mau', title: 'Báo cáo kết quả các đợt hiến máu', sheetName: 'Đợt hiến máu', subtitle: rangeText(range), signer: user?.hoTen,
+    summary: [
+      { label: 'Số đợt hiến máu', value: data.length }, { label: 'Lượt đăng ký', value: tot('soDangKy') },
+      { label: 'Tỷ lệ đạt sàng lọc (%)', value: tot('soDaSangLoc') ? Math.round((tot('soDat') / tot('soDaSangLoc')) * 100) : 0, type: 'percent' },
+      { label: 'Lượng máu thu được', value: tot('tongTheTich'), type: 'ml' }
+    ],
+    sections: [{
+      title: 'CHI TIẾT TỪNG ĐỢT', rows: data, columns: [
+        { title: 'Đợt hiến máu', value: 'tenDot' }, { title: 'Điểm hiến máu', value: 'tenDiem' }, { title: 'Ngày', value: 'ngayBatDau', type: 'date' },
+        { title: 'Kế hoạch', value: 'soLuongDuKien', type: 'number', total: 'sum' }, { title: 'Đăng ký', value: 'soDangKy', type: 'number', total: 'sum' },
+        { title: 'Đã sàng lọc', value: 'soDaSangLoc', type: 'number', total: 'sum' }, { title: 'Đạt', value: 'soDat', type: 'number', total: 'sum' },
+        { title: 'Không đạt', value: 'soKhongDat', type: 'number', total: 'sum' }, { title: 'Đã hiến', value: 'soDaHien', type: 'number', total: 'sum' },
+        { title: 'Hoàn thành KH (%)', value: (r) => (r.soLuongDuKien ? Math.round((r.soDaHien / r.soLuongDuKien) * 100) : null), type: 'percent' },
+        { title: 'Lượng máu', value: 'tongTheTich', type: 'ml', total: 'sum' }
+      ]
+    }]
+  });
   return (
     <>
-      <RangeBar value={range} onChange={setRange} extra={<Button icon={<DownloadOutlined />} onClick={() => exportCsv('bao-cao-dot-hien-mau', [
-        { title: 'Đợt', value: 'tenDot' }, { title: 'Điểm', value: 'tenDiem' }, { title: 'Ngày', value: (r) => fmtDate(r.ngayBatDau) },
-        { title: 'Kế hoạch', value: 'soLuongDuKien' }, { title: 'Đăng ký', value: 'soDangKy' }, { title: 'Đã sàng lọc', value: 'soDaSangLoc' },
-        { title: 'Đạt', value: 'soDat' }, { title: 'Không đạt', value: 'soKhongDat' }, { title: 'Đã hiến', value: 'soDaHien' }, { title: 'Tổng ml', value: 'tongTheTich' }], data)}>Xuất CSV</Button>} />
+      <RangeBar value={range} onChange={setRange} extra={<Button icon={<DownloadOutlined />} onClick={doExport}>Xuất Excel</Button>} />
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col xs={12} md={6}><Card size="small"><Statistic title="Số đợt" value={data.length} /></Card></Col>
         <Col xs={12} md={6}><Card size="small"><Statistic title="Lượt đăng ký" value={tot('soDangKy')} /></Card></Col>
@@ -188,15 +242,32 @@ function CampaignReport() {
 }
 
 function InventoryReport() {
+  const { user } = useAuth();
   const [range, setRange] = useState([dayjs().startOf('month'), dayjs()]);
   const [d, setD] = useState(null);
   useEffect(() => { reportApi.inventory(rangeParams(range)).then(setD); }, [range]);
   if (!d) return <Loading />;
+  const doExport = () => exportExcel({
+    fileName: 'bao-cao-ton-kho', title: 'Báo cáo nhập – xuất – tồn kho máu', sheetName: 'Tồn kho', subtitle: rangeText(range), signer: user?.hoTen,
+    summary: [
+      { label: 'Tồn kho hiện tại', value: Number(d.tongTonKho), type: 'ml' }, { label: 'Số đơn vị còn trong kho', value: d.soLoConKho },
+      { label: 'Nhập trong kỳ', value: Number(d.tongNhapTrongKy), type: 'ml', color: 'FF16A34A' }, { label: 'Xuất trong kỳ', value: Number(d.tongXuatTrongKy), type: 'ml', color: 'FF2563EB' },
+      { label: 'Đơn vị đã hết hạn', value: d.soLoHetHan, color: 'FFDC2626' }, { label: 'Đơn vị đã hủy bỏ', value: d.soLoHuyBo, color: 'FF64748B' }
+    ],
+    sections: [
+      {
+        title: 'TỒN KHO THEO NHÓM MÁU VÀ CHẾ PHẨM', rows: d.chiTiet, columns: [
+          { title: 'Nhóm máu', value: (r) => bloodLabel(r.nhomMau, r.heRh), align: 'center' }, { title: 'Chế phẩm', value: (r) => thanhPhanLabel(r.thanhPhanMau) },
+          { title: 'Số đơn vị', value: 'soLo', type: 'number', total: 'sum' }, { title: 'Tổng thể tích', value: 'tongSoLuong', type: 'ml', total: 'sum' },
+          { title: 'Ghi chú', value: (r) => [r.canhBaoThieu && 'Nhóm dưới ngưỡng an toàn', r.coLoSapHetHan && 'Có đơn vị sắp hết hạn'].filter(Boolean).join('; ') }
+        ]
+      },
+      { title: 'TỒN KHO THEO CHẾ PHẨM', rows: d.theoThanhPhan, columns: labelValue('Chế phẩm', 'Tổng thể tích', 'ml') }
+    ]
+  });
   return (
     <>
-      <RangeBar value={range} onChange={setRange} extra={<Button icon={<DownloadOutlined />} onClick={() => exportCsv('bao-cao-ton-kho', [
-        { title: 'Nhóm máu', value: (r) => bloodLabel(r.nhomMau, r.heRh) }, { title: 'Thành phần', value: (r) => thanhPhanLabel(r.thanhPhanMau) },
-        { title: 'Số đơn vị', value: 'soLo' }, { title: 'Tổng ml', value: 'tongSoLuong' }], d.chiTiet)}>Xuất CSV</Button>} />
+      <RangeBar value={range} onChange={setRange} extra={<Button icon={<DownloadOutlined />} onClick={doExport}>Xuất Excel</Button>} />
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col xs={12} md={4}><Card size="small"><Statistic title="Tồn kho hiện tại" value={fmtMl(d.tongTonKho)} /></Card></Col>
         <Col xs={12} md={4}><Card size="small"><Statistic title="Đơn vị còn kho" value={d.soLoConKho} /></Card></Col>
@@ -225,14 +296,26 @@ function InventoryReport() {
 }
 
 function IssueReport() {
+  const { user } = useAuth();
   const [range, setRange] = useState([dayjs().subtract(6, 'month'), dayjs()]);
   const [d, setD] = useState(null);
   useEffect(() => { reportApi.issues(rangeParams(range)).then(setD); }, [range]);
   if (!d) return <Loading />;
+  const doExport = () => exportExcel({
+    fileName: 'bao-cao-xuat-kho', title: 'Báo cáo cấp phát máu cho cơ sở y tế', sheetName: 'Xuất kho', subtitle: rangeText(range), signer: user?.hoTen,
+    summary: [
+      { label: 'Số phiếu xuất', value: d.soPhieu }, { label: 'Tổng lượng máu xuất', value: Number(d.tongXuat), type: 'ml' },
+      { label: 'Số cơ sở y tế nhận', value: d.theoCoSo.length }
+    ],
+    sections: [
+      { title: 'THEO CƠ SỞ Y TẾ', rows: d.theoCoSo, columns: labelValue('Cơ sở y tế', 'Lượng máu đã nhận', 'ml') },
+      { title: 'THEO NHÓM MÁU', rows: d.theoNhomMau, columns: labelValue('Nhóm máu', 'Lượng máu', 'ml') },
+      { title: 'THEO CHẾ PHẨM', rows: d.theoThanhPhan, columns: labelValue('Chế phẩm', 'Lượng máu', 'ml') }
+    ]
+  });
   return (
     <>
-      <RangeBar value={range} onChange={setRange} extra={<Button icon={<DownloadOutlined />} onClick={() => exportCsv('bao-cao-xuat-kho', [
-        { title: 'Cơ sở y tế', value: 'label' }, { title: 'Tổng ml', value: 'value' }], d.theoCoSo)}>Xuất CSV</Button>} />
+      <RangeBar value={range} onChange={setRange} extra={<Button icon={<DownloadOutlined />} onClick={doExport}>Xuất Excel</Button>} />
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col xs={12} md={8}><Card size="small"><Statistic title="Số phiếu xuất" value={d.soPhieu} /></Card></Col>
         <Col xs={12} md={8}><Card size="small"><Statistic title="Tổng lượng xuất" value={fmtMl(d.tongXuat)} /></Card></Col>

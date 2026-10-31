@@ -23,6 +23,8 @@ namespace HienMauAPI.DTOs
         public string? GhiChu { get; set; }
         public string NhanVienKham { get; set; } = string.Empty;
         public bool DaTiepNhan { get; set; }
+        public int? TheTichDangKy { get; set; }   // người hiến mong muốn
+        public int? TheTichChiDinh { get; set; }  // bác sĩ chỉ định
     }
 
     public class CreateScreeningRequest
@@ -39,5 +41,8 @@ namespace HienMauAPI.DTOs
 
         [MaxLength(255)] public string? LyDoKhongDat { get; set; }
         [MaxLength(255)] public string? GhiChu { get; set; }
+
+        // Bắt buộc khi kết quả Đạt: 250 | 350 | 450 ml, không vượt mức tối đa theo cân nặng / Hb
+        public int? TheTichChiDinh { get; set; }
     }
 }

@@ -40,7 +40,9 @@ namespace HienMauAPI.Services
                 TheTich = t.TheTich,
                 GhiChu = t.GhiChu,
                 NhanVienThucHien = t.NhanVien!.HoTen,
-                CacLoMau = t.KhoMaus.Select(k => new CollectionUnitDto
+                LoaiTui = t.LoaiTui,
+                TheTichChiDinh = t.KhamSangLoc!.TheTichChiDinh,
+                CacLoMau = t.KhoMaus.Where(k => k.KhoMauGocId == null).Select(k => new CollectionUnitDto
                 {
                     Id = k.Id,
                     MaLoMau = k.MaLoMau,
@@ -57,9 +59,25 @@ namespace HienMauAPI.Services
             if (dotId.HasValue) query = query.Where(t => t.KhamSangLoc!.DangKyHienMau!.DotId == dotId.Value);
 
             var list = await Project(query.OrderByDescending(t => t.NgayLayMau)).ToListAsync();
-            foreach (var c in list) c.MaLoMauTaoRa = c.CacLoMau.FirstOrDefault()?.MaLoMau;
+            foreach (var c in list) Complete(c);
             return list;
         }
+
+        // Mã túi gốc của một lần hiến: LM + ngày lấy máu + số phiếu tiếp nhận. Mỗi chế phẩm = mã túi + hậu tố (TP/HC/HT/TC)
+        public static string MaTuiMau(DateTime ngayLayMau, int tiepNhanId) => $"LM{ngayLayMau:yyMMdd}{tiepNhanId:D5}";
+
+        private static void Complete(CollectionDto c)
+        {
+            c.MaTuiMau = MaTuiMau(c.NgayLayMau, c.Id);
+            c.MaLoMauTaoRa = c.CacLoMau.FirstOrDefault()?.MaLoMau;
+        }
+
+        private static readonly Dictionary<string, string[]> ThanhPhanTheoLoaiTui = new()
+        {
+            [LoaiTuiMau.Don] = new[] { ThanhPhanMauNames.ToanPhan },
+            [LoaiTuiMau.Doi] = new[] { ThanhPhanMauNames.HongCau, ThanhPhanMauNames.HuyetTuong },
+            [LoaiTuiMau.Ba] = new[] { ThanhPhanMauNames.HongCau, ThanhPhanMauNames.HuyetTuong, ThanhPhanMauNames.TieuCau }
+        };
 
         // Người đã đạt sàng lọc nhưng chưa được lấy máu. Đặt ở đây (thay vì dùng API sàng lọc)
         // để nhân viên tiếp nhận xem được danh sách mà không cần quyền của nhân viên sàng lọc.
@@ -72,7 +90,10 @@ namespace HienMauAPI.Services
 
         public async Task<(bool success, string? error, CollectionDto? data)> CreateAsync(int nhanVienId, CreateCollectionRequest request)
         {
-            var ngayLayMau = DateTime.Now;
+            var now = DateTime.Now;
+            var ngayLayMau = request.NgayLayMau ?? now;
+            if (ngayLayMau > now.AddMinutes(5))
+                return (false, "Thời điểm lấy máu không được ở tương lai.", null);
 
             // Chuẩn hóa danh sách chế phẩm cần nhập kho
             var components = (request.ThanhPhans != null && request.ThanhPhans.Count > 0)
@@ -94,9 +115,13 @@ namespace HienMauAPI.Services
                     return (false, "Thành phần máu không hợp lệ.", null);
                 if (c.TheTich <= 0)
                     return (false, "Thể tích từng thành phần phải lớn hơn 0.", null);
-                c.HanSuDung ??= ngayLayMau.Date.AddDays(ThanhPhanMauNames.HanSuDungMacDinh(c.ThanhPhanMau));
+                // Hạn sử dụng tính từ ngày lấy máu theo từng chế phẩm; không được vượt thời hạn bảo quản tối đa
+                var hanToiDa = ngayLayMau.Date.AddDays(ThanhPhanMauNames.HanSuDungMacDinh(c.ThanhPhanMau));
+                c.HanSuDung ??= hanToiDa;
                 if (c.HanSuDung.Value.Date <= ngayLayMau.Date)
-                    return (false, "Hạn sử dụng phải sau ngày hôm nay.", null);
+                    return (false, "Hạn sử dụng phải sau ngày lấy máu.", null);
+                if (c.HanSuDung.Value.Date > hanToiDa)
+                    return (false, $"Hạn sử dụng của {c.ThanhPhanMau} không được quá {ThanhPhanMauNames.HanSuDungMacDinh(c.ThanhPhanMau)} ngày kể từ ngày lấy máu.", null);
             }
 
             if (components.Select(c => c.ThanhPhanMau).Distinct().Count() != components.Count)
@@ -105,6 +130,22 @@ namespace HienMauAPI.Services
                 return (false, "Khi điều chế tách thành phần, không khai báo kèm 'Máu toàn phần'.", null);
             if (components.Sum(c => c.TheTich) > request.TheTich)
                 return (false, "Tổng thể tích các thành phần không được vượt quá thể tích máu đã lấy.", null);
+
+            // Loại túi phải khớp với các chế phẩm điều chế ra (túi đơn / đôi / ba)
+            var loaiTui = InputValidator.NormalizeOptional(request.LoaiTui)
+                ?? (components.Count == 1 && components[0].ThanhPhanMau == ThanhPhanMauNames.ToanPhan ? LoaiTuiMau.Don
+                    : components.Count == 3 ? LoaiTuiMau.Ba : LoaiTuiMau.Doi);
+            if (!ThanhPhanTheoLoaiTui.TryGetValue(loaiTui, out var thanhPhanCuaTui))
+                return (false, "Loại túi không hợp lệ (túi đơn, túi đôi hoặc túi ba).", null);
+            if (!components.Select(c => c.ThanhPhanMau).OrderBy(x => x).SequenceEqual(thanhPhanCuaTui.OrderBy(x => x)))
+                return (false, loaiTui switch
+                {
+                    LoaiTuiMau.Don => "Túi đơn chỉ lưu máu toàn phần.",
+                    LoaiTuiMau.Doi => "Túi đôi tách được khối hồng cầu và huyết tương.",
+                    _ => "Túi ba tách được khối hồng cầu, huyết tương và khối tiểu cầu."
+                }, null);
+            if (loaiTui == LoaiTuiMau.Ba && request.TheTich < 350)
+                return (false, "Chỉ tách khối tiểu cầu (túi ba) từ đơn vị máu 350 ml trở lên.", null);
 
             var screening = await _db.KhamSangLocs
                 .Include(k => k.DangKyHienMau).ThenInclude(d => d!.NguoiHienMau)
@@ -115,6 +156,15 @@ namespace HienMauAPI.Services
 
             var existed = await _db.TiepNhanMaus.AnyAsync(t => t.KhamSangLocId == request.KhamSangLocId);
             if (existed) return (false, "Đã tồn tại phiếu tiếp nhận máu cho lượt khám này.", null);
+
+            if (ngayLayMau < screening.NgayKham.AddMinutes(-5))
+                return (false, $"Thời điểm lấy máu phải sau khi khám sàng lọc ({screening.NgayKham:HH:mm dd/MM/yyyy}).", null);
+
+            // Lượng máu thực lấy không vượt thể tích bác sĩ chỉ định (cho phép sai số túi ±10%)
+            if (screening.TheTichChiDinh.HasValue
+                && request.TheTich > screening.TheTichChiDinh.Value * (1 + DonationRules.SaiSoTheTichLayMau))
+                return (false, $"Bác sĩ chỉ định lấy {screening.TheTichChiDinh} ml; thể tích thực lấy không được vượt quá " +
+                               $"{screening.TheTichChiDinh.Value * (1 + DonationRules.SaiSoTheTichLayMau):0} ml.", null);
 
             var donor = screening.DangKyHienMau!.NguoiHienMau!;
 
@@ -141,7 +191,8 @@ namespace HienMauAPI.Services
                     NhanVienId = nhanVienId,
                     NgayLayMau = ngayLayMau,
                     TheTich = request.TheTich,
-                    GhiChu = InputValidator.NormalizeOptional(request.GhiChu)
+                    GhiChu = InputValidator.NormalizeOptional(request.GhiChu),
+                    LoaiTui = loaiTui
                 };
                 _db.TiepNhanMaus.Add(collection);
                 await _db.SaveChangesAsync();
@@ -151,7 +202,8 @@ namespace HienMauAPI.Services
                     _db.KhoMaus.Add(new KhoMau
                     {
                         TiepNhanId = collection.Id,
-                        MaLoMau = $"LM{ngayLayMau:yyMMdd}{collection.Id:D5}{MaThanhPhan[c.ThanhPhanMau]}",
+                        // Mỗi lần hiến là một túi riêng (không trộn máu nhiều người); chế phẩm tách ra là túi con mang mã túi gốc
+                        MaLoMau = MaTuiMau(ngayLayMau, collection.Id) + MaThanhPhan[c.ThanhPhanMau],
                         NhomMau = donor.NhomMau!,
                         HeRh = donor.HeRh!,
                         ThanhPhanMau = c.ThanhPhanMau,
@@ -177,7 +229,7 @@ namespace HienMauAPI.Services
                 await tx.CommitAsync();
 
                 var dto = await Project(_db.TiepNhanMaus.Where(t => t.Id == collection.Id)).FirstAsync();
-                dto.MaLoMauTaoRa = dto.CacLoMau.FirstOrDefault()?.MaLoMau;
+                Complete(dto);
                 return (true, null, dto);
             }
             catch

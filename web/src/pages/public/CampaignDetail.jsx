@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { App, Alert, Button, Card, Col, Input, Modal, Progress, Result, Row, Space, Typography, Breadcrumb, List } from 'antd';
+import { App, Alert, Button, Card, Col, Input, Modal, Progress, Radio, Result, Row, Space, Typography, Breadcrumb, List } from 'antd';
 import {
   CalendarOutlined, ClockCircleOutlined, EnvironmentOutlined, PhoneOutlined, TeamOutlined, CheckCircleFilled, InfoCircleOutlined
 } from '@ant-design/icons';
@@ -8,7 +8,7 @@ import dayjs from 'dayjs';
 import { campaignApi, registrationApi } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { CampaignStatusTag, Loading, InfoRow } from '../../components/common';
-import { fmtTime } from '../../utils/format';
+import { fmtTime, THE_TICH_CHUAN } from '../../utils/format';
 
 export default function CampaignDetail() {
   const { id } = useParams();
@@ -19,6 +19,7 @@ export default function CampaignDetail() {
   const [error, setError] = useState(null);
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState('');
+  const [theTich, setTheTich] = useState(350);
   const [submitting, setSubmitting] = useState(false);
   const [myReg, setMyReg] = useState(null);
 
@@ -45,7 +46,7 @@ export default function CampaignDetail() {
   const submit = async () => {
     setSubmitting(true);
     try {
-      const reg = await registrationApi.create({ dotId: Number(id), ghiChu: note || null });
+      const reg = await registrationApi.create({ dotId: Number(id), ghiChu: note || null, theTichDangKy: theTich });
       setMyReg(reg);
       setOpen(false);
       modal.success({
@@ -119,6 +120,13 @@ export default function CampaignDetail() {
 
       <Modal open={open} title="Xác nhận đăng ký hiến máu" onCancel={() => setOpen(false)} onOk={submit} okText="Xác nhận đăng ký" cancelText="Hủy" confirmLoading={submitting}>
         <p>Bạn đăng ký tham gia <b>{c.tenDot}</b> ngày <b>{dayjs(c.ngayBatDau).format('DD/MM/YYYY')}</b> tại <b>{c.tenDiem}</b>.</p>
+        <Typography.Text strong>Lượng máu bạn muốn hiến</Typography.Text>
+        <Radio.Group block optionType="button" buttonStyle="solid" value={theTich} onChange={(e) => setTheTich(e.target.value)} style={{ margin: '8px 0 6px' }}
+          options={THE_TICH_CHUAN.map((v) => ({ value: v, label: `${v} ml` }))} />
+        <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
+          Bác sĩ sẽ chỉ định lượng máu được hiến khi khám sàng lọc, dựa trên cân nặng và chỉ số Hemoglobin
+          (không quá 9 ml/kg: dưới 45 kg hiến 250 ml, 45–49 kg tối đa 350 ml, từ 50 kg có thể hiến 450 ml).
+        </Typography.Paragraph>
         <Input.TextArea rows={3} placeholder="Ghi chú cho ban tổ chức (không bắt buộc), ví dụ: dự kiến đến lúc 9h" value={note} onChange={(e) => setNote(e.target.value)} maxLength={255} showCount />
       </Modal>
     </div>
